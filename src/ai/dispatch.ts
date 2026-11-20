@@ -49,12 +49,18 @@ export function buildContext(net: Network, ps: PlanSet, facts: Facts): DispatchC
   for (const c of d.crews.filter((x) => x.timedOut.length)) {
     summary.push(`Crew ${c.id} would pass its {{${c.id}.max}} min duty limit, so ${c.timedOut.join(', ')} cannot operate`);
   }
+  const scenario = ps.closures.map((_, i) => `{{closure${i + 1}.airport}} closed {{closure${i + 1}.start}} to {{closure${i + 1}.end}}`).join('; ');
+  const networkLine = `{{network.airports}} airports, {{network.flights}} flights, {{network.aircraft}} aircraft, {{network.spares}} spare aircraft (${net.spare_aircraft.map((s) => `${s.tail_id} at ${s.base}`).join(', ')})`;
+  // Send only the facts the model can use: totals, plan totals and every fact cited in the summary.
+  // (Verification still runs against the full fact table.)
+  const cited = new Set([...[scenario, networkLine, ...summary].join(' ').matchAll(/\{\{([\w.-]+)\}\}/g)].map((m) => m[1]));
+  const slim = Object.fromEntries(Object.entries(facts).filter(([k]) => cited.has(k) || /^(closure\d|network\.|disrupted\.|plans\.|P\d+\.)/.test(k)));
   return {
-    scenario: ps.closures.map((_, i) => `{{closure${i + 1}.airport}} closed {{closure${i + 1}.start}} to {{closure${i + 1}.end}}`).join('; '),
-    network: `{{network.airports}} airports, {{network.flights}} flights, {{network.aircraft}} aircraft, {{network.spares}} spare aircraft (${net.spare_aircraft.map((s) => `${s.tail_id} at ${s.base}`).join(', ')})`,
+    scenario,
+    network: networkLine,
     disruptedSummary: summary,
     plans: ps.plans.map((p) => ({ id: p.id, steps: p.steps, keys: PLAN_METRIC_KEYS.map((k) => `${p.id}.${k}`).concat([`${p.id}.saved.strandedPax`, `${p.id}.saved.totalDelayMin`, `${p.id}.saved.strandedPct`]) })),
-    facts,
+    facts: slim,
   };
 }
 
