@@ -77,7 +77,6 @@ export function rulesReply(ps: PlanSet): DispatchReply {
   const m = p.result.metrics;
   const explanation = [
     `The closure makes {{disrupted.lateFlights}} flights late and strands {{disrupted.strandedPax}} passengers.`,
-    `Plan ${id}: ${p.steps.join('; then ')}.`,
     `Stranded passengers go from {{disrupted.strandedPax}} to {{${id}.strandedPax}}. Total delay goes from {{disrupted.totalDelayMin}} to {{${id}.totalDelayMin}} min.`,
   ];
   if (ps.disrupted.metrics.crewTimeouts > 0) explanation.push(`Crews over the duty limit go from {{disrupted.crewTimeouts}} to {{${id}.crewTimeouts}}.`);

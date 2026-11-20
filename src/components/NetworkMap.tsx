@@ -164,7 +164,7 @@ function NetworkMapImpl({ sim, closures, time, selected, chain, onAirport, onFli
           {fmt(time)}
           <small>IST</small>
         </div>
-        <div className="stat">
+        <div className="stat-line">
           {airborne.length} airborne · {late} late
           {closedNow.size > 0 && <span style={{ color: '#d8b4fe' }}> · {[...closedNow].join(', ')} closed</span>}
         </div>

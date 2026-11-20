@@ -1,6 +1,7 @@
 import type { DispatchOutcome } from '../ai/dispatch';
 import type { Plan, PlanSet } from '../engine/planner';
-import { fmtNum } from '../ui';
+import type { Metrics } from '../engine/types';
+import { fmtNum, shortAction } from '../ui';
 
 interface Props {
   planSet: PlanSet;
@@ -12,102 +13,128 @@ interface Props {
   onApply: (id: string | null) => void;
 }
 
-function Metrics({ p, base }: { p: Plan; base: PlanSet['disrupted'] }) {
-  const m = p.result.metrics;
+function BeforeAfter({ before, after }: { before: Metrics; after: Metrics }) {
+  const cell = (k: string, b: number, a: number) => (
+    <div>
+      <div className="k">{k}</div>
+      <div className="x">
+        <s>{fmtNum(b)}→</s>
+        <span style={{ color: a < b ? '#86efac' : a > b ? '#fca5a5' : undefined }}>{fmtNum(a)}</span>
+      </div>
+    </div>
+  );
   return (
-    <div className="plan-metrics">
-      <span>stranded <b>{fmtNum(base.metrics.strandedPax)}→{fmtNum(m.strandedPax)}</b></span>
-      <span>delay <b>{fmtNum(base.metrics.totalDelayMin)}→{fmtNum(m.totalDelayMin)}</b> min</span>
-      <span>cxl <b>{m.cancelledFlights}</b></span>
-      {m.sparesUsed > 0 && <span>spares <b>{m.sparesUsed}</b></span>}
+    <div className="ba">
+      {cell('Stranded', before.strandedPax, after.strandedPax)}
+      {cell('Delay min', before.totalDelayMin, after.totalDelayMin)}
+      {cell('Cancelled', before.cancelledFlights, after.cancelledFlights)}
+    </div>
+  );
+}
+
+function PlanCard({ p, base, rec, applied, onApply }: { p: Plan; base: Metrics; rec: boolean; applied: boolean; onApply: (id: string | null) => void }) {
+  return (
+    <div className={`plan${rec ? ' rec' : ''}${applied ? ' applied' : ''}`}>
+      <div className="plan-top">
+        <span className="name">
+          Plan {p.id}
+          {rec && <span className="badge ai" style={{ marginLeft: 8 }}>recommended</span>}
+        </span>
+        {applied ? (
+          <button className="btn small" onClick={() => onApply(null)}>Undo</button>
+        ) : (
+          <button className={`btn small${rec ? ' primary' : ''}`} onClick={() => onApply(p.id)}>Apply</button>
+        )}
+      </div>
+      <div className="actions">
+        {p.actions.map((a, i) => {
+          const s = shortAction(a, p.result);
+          return (
+            <div className="action" key={i}>
+              <span className="ic">{s.icon}</span>
+              <span>{s.text}</span>
+            </div>
+          );
+        })}
+      </div>
+      <BeforeAfter before={base} after={p.result.metrics} />
     </div>
   );
 }
 
 export function Dispatcher({ planSet, stale, status, outcome, applied, onAsk, onApply }: Props) {
   const { plans, disrupted } = planSet;
+  const base = disrupted.metrics;
   const rec = outcome?.planId ?? null;
-  const ordered = rec ? [...plans].sort((a, b) => Number(b.id === rec) - Number(a.id === rec)) : plans;
-  const noDisruption = disrupted.metrics.cost === 0;
+  const top = plans.find((p) => p.id === rec) ?? null;
+  const others = plans.filter((p) => p.id !== top?.id);
+  const nothing = base.cost === 0;
 
   return (
-    <section className="panel dispatcher" aria-label="AI dispatcher" aria-busy={status === 'loading'}>
-      <h2>
-        <span style={{ color: 'var(--ai)' }}>✦</span> AI dispatcher
-        <span className="spacer" />
-        {outcome && (outcome.source === 'gemini' ? <span className="badge ai">Gemini{outcome.model ? ` · ${outcome.model}` : ''}</span> : <span className="badge warn">Rule-based</span>)}
+    <section className="card ai-card" aria-labelledby="s3" aria-busy={status === 'loading'}>
+      <h2 className="step-title" id="s3">
+        <span className="step-num">3</span> Recover with AI
       </h2>
 
       {status !== 'done' && (
-        <div className="ai-empty">
-          <p style={{ margin: 0 }}>
-            {noDisruption
-              ? 'Nothing to fix. Close an airport to see the domino effect.'
-              : `The engine checked recovery moves and found ${plans.length} plan${plans.length === 1 ? '' : 's'} that beat doing nothing. Ask the dispatcher to pick one and explain it.`}
+        <>
+          <p className="ai-intro">
+            {nothing
+              ? 'Nothing to fix yet. Close an airport first.'
+              : plans.length
+                ? `The engine tested every recovery move. ${plans.length} plan${plans.length > 1 ? 's' : ''} beat doing nothing. The AI dispatcher picks one and explains why.`
+                : 'The engine found no move that improves this situation.'}
           </p>
-          <button className="btn ai" onClick={onAsk} disabled={noDisruption || status === 'loading' || stale}>
-            {status === 'loading' ? 'Dispatcher is thinking…' : stale ? 'Recomputing plans…' : '✦ Ask AI dispatcher'}
-          </button>
+          {!nothing && plans.length > 0 && (
+            <button className="btn ai" onClick={onAsk} disabled={status === 'loading' || stale}>
+              {status === 'loading' ? 'Thinking…' : stale ? 'Updating plans…' : '✦ Ask the AI dispatcher'}
+            </button>
+          )}
           {status === 'loading' && (
-            <div style={{ display: 'grid', gap: 8 }}>
+            <div style={{ display: 'grid', gap: 8, marginTop: 14 }}>
               <div className="shimmer" style={{ width: '90%' }} />
-              <div className="shimmer" style={{ width: '75%' }} />
-              <div className="shimmer" style={{ width: '82%' }} />
+              <div className="shimmer" style={{ width: '70%' }} />
+              <div className="shimmer" style={{ width: '80%' }} />
             </div>
           )}
-        </div>
+        </>
       )}
 
       {status === 'done' && outcome && (
         <>
-          <div className="ai-head">{outcome.reply.headline}</div>
-          <div className="row" style={{ flexWrap: 'wrap' }}>
-            <span className={`badge ${outcome.verification.ok ? 'ok' : 'warn'}`} title="Every number in this text was checked against the simulation engine.">
-              {outcome.verification.ok ? '✓' : '!'} {outcome.verification.verified}/{outcome.verification.checked} numbers match the engine
+          <div className="badges">
+            {outcome.source === 'gemini' ? <span className="badge ai">✦ Gemini</span> : <span className="badge warn">Rule-based</span>}
+            <span className={`badge ${outcome.verification.ok ? 'ok' : 'warn'}`} title="Every number in this answer was checked against the simulation engine.">
+              {outcome.verification.ok ? '✓' : '!'} {outcome.verification.verified}/{outcome.verification.checked} numbers verified
             </span>
-            <button className="btn small ghost" onClick={onAsk}>↻ Ask again</button>
           </div>
-          {outcome.note && <div className="note">{outcome.note}. Showing the deterministic rule-based dispatcher.</div>}
+          <p className="ai-head">{outcome.reply.headline}</p>
+          {outcome.note && <p className="note">AI unavailable, showing the built-in rule-based dispatcher.</p>}
           <ul className="ai-list">
             {outcome.reply.explanation.map((t, i) => <li key={i}>{t}</li>)}
           </ul>
           {outcome.reply.risks.length > 0 && (
-            <>
-              <div className="ai-section-title">Risks</div>
-              <ul className="ai-list">
-                {outcome.reply.risks.map((t, i) => <li key={i}>{t}</li>)}
-              </ul>
-            </>
+            <div className="risk">
+              {outcome.reply.risks.map((t, i) => <span key={i}>⚠ {t}</span>)}
+            </div>
           )}
-          {outcome.reply.whyNotOthers && <div className="note">{outcome.reply.whyNotOthers}</div>}
+          {top && <PlanCard p={top} base={base} rec applied={applied === top.id} onApply={onApply} />}
+          {!top && outcome.reply.whyNotOthers && <p className="note">{outcome.reply.whyNotOthers}</p>}
         </>
       )}
 
-      {plans.length > 0 && (
-        <>
-          <div className="ai-section-title">Candidate plans (engine-scored)</div>
-          <div style={{ display: 'grid', gap: 8, maxHeight: 420, overflow: 'auto' }}>
-            {ordered.map((p) => (
-              <div key={p.id} className={`plan-card${p.id === rec ? ' rec' : ''}${p.id === applied ? ' applied' : ''}`}>
-                <div className="plan-top">
-                  <span className="plan-id">{p.id}</span>
-                  {p.id === rec && <span className="badge ai">recommended</span>}
-                  {p.id === applied && <span className="badge ok">applied</span>}
-                  <span style={{ flex: 1 }} />
-                  {p.id === applied ? (
-                    <button className="btn small" onClick={() => onApply(null)}>Undo</button>
-                  ) : (
-                    <button className={`btn small${p.id === rec ? ' primary' : ''}`} onClick={() => onApply(p.id)}>Apply</button>
-                  )}
-                </div>
-                <ol className="plan-steps">
-                  {p.steps.map((s, i) => <li key={i}>{s}</li>)}
-                </ol>
-                <Metrics p={p} base={disrupted} />
-              </div>
+      {others.length > 0 && (
+        <details className="more" open={status === 'done' && !top}>
+          <summary>{status === 'done' && top ? `Other plans (${others.length})` : `Browse ${others.length} engine plan${others.length > 1 ? 's' : ''}`}</summary>
+          <div className="list">
+            {others.map((p) => (
+              <PlanCard key={p.id} p={p} base={base} rec={false} applied={applied === p.id} onApply={onApply} />
             ))}
           </div>
-        </>
+        </details>
+      )}
+      {status === 'done' && (
+        <button className="btn link" onClick={onAsk} style={{ marginTop: 10 }}>↻ Ask again</button>
       )}
     </section>
   );
