@@ -82,3 +82,4 @@ Import the repo in Vercel (framework: Vite), add the environment variable `GEMIN
 - Map outline: India official boundary from [DataMeet `india-composite.geojson`](https://github.com/datameet/maps/tree/master/Country) (CC0), simplified and embedded (`src/data/indiaOutline.ts`).
 
 `src/data/flight_network.json` — 16 airports, 70 flights, 16 aircraft, 21 connections, 16 crews, 2 spare aircraft (provided by the organisers).
+- Landing-page aircraft: side view from [Boeing 737-800 v1.0.png](https://commons.wikimedia.org/wiki/File:Boeing_737-800_v1.0.png) by Julien Scavini, Wikimedia Commons, [CC BY-SA 3.0](https://creativecommons.org/licenses/by-sa/3.0/); cropped, filled and mirrored (`public/plane-737.webp`, same licence).

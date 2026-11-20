@@ -1,0 +1,32 @@
+One storm in Mumbai at 7:30 AM.
+Almost 6 hours later, a flight leaves Delhi 30 minutes late, under a clear sky. ✈️⛈️
+
+Why? One plane flies many flights in a day. If its first flight is late, every flight after it is late too. Like dominoes.
+
+For #PromptWars I built Domino Sky, a simple simulator that shows this.
+
+Here is a short walkthrough:
+
+1️⃣ Close an airport
+Pick a city, a start time and how long it stays closed. Or pick a ready scenario like "Mumbai storm".
+
+2️⃣ Watch the dominoes fall
+A live map of India shows every plane. Green is on time, orange is a little late, red is very late. Click any flight to see why it is late, step by step, back to the storm.
+
+3️⃣ Count the damage
+See how many flights are late, how many passengers miss their connection, and which crews go over their legal working hours.
+
+4️⃣ Fix it with AI
+The app tests every recovery move: cancel a flight, use a spare plane, or make a flight wait for connecting passengers. A Gemini AI dispatcher picks the best plan and explains it in plain English. For the Mumbai storm, the best plan cuts stranded passengers from 199 to 48.
+
+My main rule: the AI explains, the code calculates.
+AI can get numbers wrong. So here the AI does no maths. A simulation engine makes every number, and the app checks each number the AI writes before you see it. If one number does not match, the answer is rejected.
+
+🔗 Try it: https://domino-sky-five.vercel.app
+💻 Code: https://github.com/signalfern/domino-sky
+
+Built with React, TypeScript, the Gemini API and Vercel.
+
+Thank you @The Cloud Club, @Google for Developers and @Hack2skill for Prompt Wars!
+
+#PromptWars #GoogleForDevelopers #Hack2skill #Gemini #AI #BuildWithAI

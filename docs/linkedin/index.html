@@ -1,0 +1,211 @@
+<title>Domino Sky LinkedIn Post</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500;700&display=swap">
+<style>
+  /* Layout: post text on the left, images in upload order on the right; one column on phones.
+     Dark-first, matching the Domino Sky app palette. */
+  :root {
+    --bg: #080c18;
+    --panel: #0e1424;
+    --border: #1c2640;
+    --text: #e8edf7;
+    --muted: #8b97b0;
+    --accent: #38bdf8;
+    --accent-ink: #04121c;
+    --warn: #f59e0b;
+    --warn-bg: #2a1d06;
+    --ok: #22c55e;
+    --sans: Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    --mono: "JetBrains Mono", ui-monospace, Consolas, Menlo, monospace;
+    color-scheme: dark;
+  }
+  @media (prefers-color-scheme: light) {
+    :root:not([data-theme="dark"]) {
+      --bg: #f3f6fb; --panel: #ffffff; --border: #d6deeb; --text: #0e1628; --muted: #56627a;
+      --accent: #0369a1; --accent-ink: #ffffff; --warn: #92400e; --warn-bg: #fdf3e1; --ok: #15803d;
+      color-scheme: light;
+    }
+  }
+  :root[data-theme="light"] {
+    --bg: #f3f6fb; --panel: #ffffff; --border: #d6deeb; --text: #0e1628; --muted: #56627a;
+    --accent: #0369a1; --accent-ink: #ffffff; --warn: #92400e; --warn-bg: #fdf3e1; --ok: #15803d;
+    color-scheme: light;
+  }
+  * { box-sizing: border-box; }
+  body {
+    background: var(--bg); color: var(--text); font-family: var(--sans); font-size: 15px; line-height: 1.55;
+    padding-left: max(16px, env(safe-area-inset-left, 0px));
+    padding-right: max(16px, env(safe-area-inset-right, 0px));
+    padding-block: 28px 48px;
+  }
+  .wrap { max-width: 1240px; margin: 0 auto; display: grid; gap: 24px; }
+  header { display: grid; gap: 6px; }
+  .eyebrow { font-family: var(--mono); font-size: 12px; letter-spacing: .08em; text-transform: uppercase; color: var(--accent); margin: 0; }
+  h1 { font-size: clamp(24px, 3.2vw, 34px); line-height: 1.15; margin: 0; text-wrap: balance; letter-spacing: -0.01em; }
+  header p { margin: 0; color: var(--muted); max-width: 70ch; }
+  .grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.25fr); gap: 24px; align-items: start; }
+  @media (max-width: 900px) { .grid { grid-template-columns: minmax(0, 1fr); } }
+  .card { background: var(--panel); border: 1px solid var(--border); border-radius: 14px; padding: 20px; min-width: 0; }
+  .post-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin-bottom: 14px; }
+  h2 { font-size: 15px; margin: 0; font-weight: 600; }
+  .count { font-family: var(--mono); font-size: 12px; color: var(--muted); }
+  button.copy {
+    font: 600 14px var(--sans); background: var(--accent); color: var(--accent-ink); border: 0; border-radius: 10px;
+    padding: 9px 16px; cursor: pointer;
+  }
+  button.copy:focus-visible { outline: 2px solid var(--text); outline-offset: 2px; }
+  #post { white-space: pre-wrap; word-break: break-word; margin: 0; font: 400 14.5px/1.6 var(--sans); max-width: 65ch; }
+  .side { display: grid; gap: 24px; min-width: 0; position: sticky; top: env(safe-area-inset-top, 0px); }
+  @media (max-width: 900px) { .side { position: static; } }
+  .steps { display: grid; gap: 10px; margin: 0; padding: 0; list-style: none; counter-reset: s; }
+  .steps li { display: grid; grid-template-columns: 26px minmax(0, 1fr); gap: 10px; align-items: start; }
+  .steps li::before {
+    counter-increment: s; content: counter(s); font: 700 12px/26px var(--mono); text-align: center;
+    width: 26px; height: 26px; border-radius: 50%; border: 1px solid var(--border); color: var(--accent);
+  }
+  .steps b { font-weight: 600; }
+  code { font-family: var(--mono); font-size: 13px; }
+  .warn { background: var(--warn-bg); border: 1px solid color-mix(in srgb, var(--warn) 45%, transparent); border-radius: 12px; padding: 14px 16px; }
+  .warn h2 { color: var(--warn); margin-bottom: 4px; }
+  .warn p { margin: 0; }
+  .shots { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
+  @media (max-width: 560px) { .shots { grid-template-columns: minmax(0, 1fr); } }
+  figure { margin: 0; display: grid; gap: 8px; min-width: 0; }
+  figure img { width: 100%; height: auto; border-radius: 10px; border: 1px solid var(--border); display: block; }
+  figcaption { font-size: 13px; color: var(--muted); display: flex; gap: 8px; align-items: baseline; }
+  figcaption .n { font: 700 12px var(--mono); color: var(--accent); flex: none; }
+  .tag { font: 600 11px var(--mono); padding: 1px 6px; border-radius: 5px; border: 1px solid var(--border); color: var(--muted); }
+  .tag.flag { color: var(--warn); border-color: color-mix(in srgb, var(--warn) 45%, transparent); }
+  .wide { grid-column: 1 / -1; }
+</style>
+
+<div class="wrap">
+  <header>
+    <p class="eyebrow">#PromptWars submission</p>
+    <h1>Domino Sky LinkedIn post</h1>
+    <p>Copy the text, upload the screenshots in this order, then tag the three pages from LinkedIn's @ menu.</p>
+  </header>
+
+  <div class="grid">
+    <section class="card" aria-labelledby="post-title">
+      <div class="post-head">
+        <div>
+          <h2 id="post-title">Post text</h2>
+          <span class="count" id="count"></span>
+        </div>
+        <button class="copy" id="copy" type="button">Copy text</button>
+      </div>
+<pre id="post">One storm in Mumbai at 7:30 AM.
+Almost 6 hours later, a flight leaves Delhi 30 minutes late, under a clear sky. ✈️⛈️
+
+Why? One plane flies many flights in a day. If its first flight is late, every flight after it is late too. Like dominoes.
+
+For #PromptWars I built Domino Sky, a simple simulator that shows this.
+
+Here is a short walkthrough:
+
+1️⃣ Close an airport
+Pick a city, a start time and how long it stays closed. Or pick a ready scenario like "Mumbai storm".
+
+2️⃣ Watch the dominoes fall
+A live map of India shows every plane. Green is on time, orange is a little late, red is very late. Click any flight to see why it is late, step by step, back to the storm.
+
+3️⃣ Count the damage
+See how many flights are late, how many passengers miss their connection, and which crews go over their legal working hours.
+
+4️⃣ Fix it with AI
+The app tests every recovery move: cancel a flight, use a spare plane, or make a flight wait for connecting passengers. A Gemini AI dispatcher picks the best plan and explains it in plain English. For the Mumbai storm, the best plan cuts stranded passengers from 199 to 48.
+
+My main rule: the AI explains, the code calculates.
+AI can get numbers wrong. So here the AI does no maths. A simulation engine makes every number, and the app checks each number the AI writes before you see it. If one number does not match, the answer is rejected.
+
+🔗 Try it: https://domino-sky-five.vercel.app
+💻 Code: https://github.com/signalfern/domino-sky
+
+Built with React, TypeScript, the Gemini API and Vercel.
+
+Thank you @The Cloud Club, @Google for Developers and @Hack2skill for Prompt Wars!
+
+#PromptWars #GoogleForDevelopers #Hack2skill #Gemini #AI #BuildWithAI</pre>
+    </section>
+
+    <div class="side">
+      <section class="warn" aria-labelledby="warn-title">
+        <h2 id="warn-title">Fix before you post: the live AI is off</h2>
+        <p>The live site has no <code>GEMINI_API_KEY</code>, so the AI panel shows "Rule-based" and "AI unavailable". Add the key in Vercel (project <code>domino-sky</code> → Settings → Environment Variables), then redeploy. After that, re-take images 5 and 6 so they show the Gemini badge.</p>
+      </section>
+
+      <section class="card" aria-labelledby="how-title">
+        <h2 id="how-title" style="margin-bottom:12px">How to post</h2>
+        <ol class="steps">
+          <li><span>Paste the text into a new LinkedIn post.</span></li>
+          <li><span>Delete each pasted <b>@Name</b>, type <b>@</b> again and pick <b>The Cloud Club</b>, <b>Google for Developers</b> and <b>Hack2skill</b> from the list. Pasted names do not become tags.</span></li>
+          <li><span>Add the images in the order below. The first image is the cover.</span></li>
+          <li><span>Check that <b>#PromptWars</b> is in the text, then post.</span></li>
+        </ol>
+      </section>
+
+      <section aria-labelledby="img-title">
+        <h2 id="img-title" style="margin-bottom:12px">Images, in upload order</h2>
+        <div class="shots">
+          <figure class="wide">
+            <img src="img/01-landing.png" alt="Domino Sky landing page: One storm. Seventy flights. Watch the dominoes fall." loading="lazy">
+            <figcaption><span class="n">1</span><span>Cover: the landing page</span></figcaption>
+          </figure>
+          <figure>
+            <img src="img/05-domino-chain.png" alt="Why is DS1204 late: Mumbai closed, then four flights in a chain are late" loading="lazy">
+            <figcaption><span class="n">2</span><span>The domino chain: Mumbai closure → Delhi flight late</span></figcaption>
+          </figure>
+          <figure>
+            <img src="img/03-simulator-map.png" alt="Live India map with late flights in red and the impact panel" loading="lazy">
+            <figcaption><span class="n">3</span><span>Live map and damage count</span></figcaption>
+          </figure>
+          <figure>
+            <img src="img/04-timeline.png" alt="Timeline of all 16 aircraft with late flights in red and orange" loading="lazy">
+            <figcaption><span class="n">4</span><span>Each plane's day on a timeline</span></figcaption>
+          </figure>
+          <figure>
+            <img src="img/07-after-plan.png" alt="After the recovery plan: stranded passengers go from 199 to 48" loading="lazy">
+            <figcaption><span class="n">5</span><span>After the fix: 199 → 48 stranded <span class="tag flag">re-take</span></span></figcaption>
+          </figure>
+          <figure>
+            <img src="img/06-ai-dispatcher.png" alt="AI dispatcher panel with 13 of 13 numbers verified" loading="lazy">
+            <figcaption><span class="n">6</span><span>AI dispatcher, every number checked <span class="tag flag">re-take</span></span></figcaption>
+          </figure>
+          <figure>
+            <img src="img/02-takeoff.png" alt="Landing page take-off scene: A 90-minute storm holds one plane" loading="lazy">
+            <figcaption><span class="n">7</span><span>Optional: the take-off scroll story <span class="tag">optional</span></span></figcaption>
+          </figure>
+        </div>
+      </section>
+    </div>
+  </div>
+</div>
+
+<script>
+  (function () {
+    var post = document.getElementById('post');
+    var btn = document.getElementById('copy');
+    var count = document.getElementById('count');
+    var text = post.textContent;
+    count.textContent = text.length + ' characters · LinkedIn limit 3,000';
+    function selectText() {
+      var r = document.createRange();
+      r.selectNodeContents(post);
+      var s = window.getSelection();
+      s.removeAllRanges();
+      s.addRange(r);
+    }
+    btn.addEventListener('click', function () {
+      var done = function () { btn.textContent = 'Copied'; setTimeout(function () { btn.textContent = 'Copy text'; }, 1800); };
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(text).then(done, function () { selectText(); btn.textContent = 'Press Ctrl+C'; });
+      } else {
+        selectText();
+        btn.textContent = 'Press Ctrl+C';
+      }
+    });
+  })();
+</script>

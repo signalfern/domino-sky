@@ -10,7 +10,7 @@ const easeIn = (t: number) => t * t;
 
 /**
  * Plane pose in the 1600×900 scene for scroll progress p, kept inside the part of the
- * scene that a screen of w×h shows (the SVG uses preserveAspectRatio "slice").
+ * scene that a screen of w×h shows (the scene is scaled to cover the screen, like "slice").
  */
 export function planePose(p: number, w: number, h: number) {
   const k = Math.max(w / 1600, h / 900);
@@ -30,45 +30,19 @@ export function planePose(p: number, w: number, h: number) {
   const y = yGround - climb * (yGround - (y0 + vh * 0.24));
   const rot = -13 * smooth(0.3, 0.44, p) + 4 * smooth(0.8, 1, p);
   const s = s0 * (1 - 0.32 * smooth(0.45, 1, p));
-  return { x, y, rot, s, roll, view: { x0, y0, vw, vh } };
+  return { x, y, rot, s, s0, roll, k, view: { x0, y0, vw, vh } };
 }
 
 /** Opacity of a caption that fades in over [a, a+f] and out over [b-f, b]. */
 const band = (p: number, a: number, b: number, f = 0.05) => Math.min(smooth(a, a + f, p), 1 - smooth(b - f, b, p));
 
 const STARS = Array.from({ length: 70 }, (_, i) => ({ x: (i * 377) % 1600, y: (i * 151) % 520, r: i % 7 === 0 ? 1.6 : 0.9 }));
-const LIGHTS = Array.from({ length: 80 }, (_, i) => i * 60);
 const SKYLINE = Array.from({ length: 34 }, (_, i) => ({ x: i * 50 - 20, w: 34 + ((i * 13) % 20), h: 40 + ((i * 37) % 110) }));
-
-function Plane() {
-  return (
-    <g transform="translate(-100 -30)">
-      {/* vertical tail */}
-      <path d="M28 23 L14 2 L30 2 L54 23 Z" fill="#cbd5e1" />
-      <path d="M17 6 L29 6 L33 11 L21 11 Z" fill="#38bdf8" />
-      {/* horizontal stabiliser */}
-      <path d="M30 29 L12 33 L20 35 L46 31 Z" fill="#94a3b8" />
-      {/* fuselage */}
-      <path d="M22 30 C22 25 28 22 40 22 L168 22 C181 22 191 26 197 30 C191 34 181 38 168 38 L40 38 C28 38 22 35 22 30 Z" fill="#e8edf7" />
-      <path d="M40 33.5 L176 33.5" stroke="#38bdf8" strokeWidth="2" />
-      {/* windows */}
-      {Array.from({ length: 15 }, (_, i) => (
-        <circle key={i} cx={62 + i * 7} cy={27.5} r={1.3} fill="#334155" />
-      ))}
-      <path d="M177 25.5 L188 27.5 L185 29.5 L176 29 Z" fill="#1e293b" />
-      {/* wing + engine */}
-      <path d="M96 32 L70 50 L84 50 L126 33 Z" fill="#cbd5e1" />
-      <rect x="86" y="37" width="28" height="9" rx="4.5" fill="#94a3b8" />
-      <circle className="lp-engine" cx="86" cy="41.5" r="3" fill="#f59e0b" />
-      {/* landing gear */}
-      <g className="lp-gear">
-        <path d="M60 38 L60 47 M150 38 L150 47 M104 46 L104 50" stroke="#64748b" strokeWidth="2" />
-        <circle cx="60" cy="49" r="3" fill="#0f172a" stroke="#64748b" />
-        <circle cx="150" cy="49" r="3" fill="#0f172a" stroke="#64748b" />
-      </g>
-    </g>
-  );
-}
+const CLOUDS = [
+  [6, 14, 1], [32, 4, 0.8], [61, 18, 1.2], [86, 7, 0.9], [18, 38, 1.1], [72, 40, 0.8],
+] as const;
+const PLANE_RATIO = 940 / 286;
+const LIGHT_GAP = 60; // scene units between runway lights
 
 interface Props {
   onLaunch: () => void;
@@ -77,12 +51,12 @@ interface Props {
 
 export default function Landing({ onLaunch, prefetch }: Props) {
   const heroRef = useRef<HTMLElement>(null);
-  const planeRef = useRef<SVGGElement>(null);
-  const groundRef = useRef<SVGGElement>(null);
-  const lightsRef = useRef<SVGGElement>(null);
-  const cloudsRef = useRef<SVGGElement>(null);
-  const trailRef = useRef<SVGPathElement>(null);
-  const starsRef = useRef<SVGGElement>(null);
+  const planeRef = useRef<HTMLDivElement>(null);
+  const trailRef = useRef<HTMLDivElement>(null);
+  const groundRef = useRef<HTMLDivElement>(null);
+  const lightsRef = useRef<HTMLDivElement>(null);
+  const cloudsRef = useRef<HTMLDivElement>(null);
+  const starsRef = useRef<SVGSVGElement>(null);
   const capRefs = useRef<(HTMLDivElement | null)[]>([]);
   const titleRef = useRef<HTMLDivElement>(null);
   const progRef = useRef<HTMLDivElement>(null);
@@ -94,53 +68,96 @@ export default function Landing({ onLaunch, prefetch }: Props) {
   }, [prefetch]);
 
   useEffect(() => {
+    const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
     let raf = 0;
-    const render = () => {
-      raf = 0;
+    let shown = -1; // smoothed progress
+    let layout = { w: 0, h: 0, k: 1, x0: 0, y0: 0 };
+
+    const target = () => {
       const hero = heroRef.current;
-      if (!hero) return;
-      const total = hero.offsetHeight - window.innerHeight;
-      const p = clamp(-hero.getBoundingClientRect().top / Math.max(total, 1));
+      if (!hero) return 0;
+      return clamp(-hero.getBoundingClientRect().top / Math.max(hero.offsetHeight - window.innerHeight, 1));
+    };
 
-      const { x, y, rot, s, roll } = planePose(p, window.innerWidth, window.innerHeight);
-      planeRef.current?.setAttribute('transform', `translate(${x.toFixed(1)} ${y.toFixed(1)}) rotate(${rot.toFixed(2)}) scale(${s.toFixed(3)})`);
-      planeRef.current?.style.setProperty('--gear', String(1 - smooth(0.46, 0.54, p)));
-
-      groundRef.current?.setAttribute('transform', `translate(0 ${(smooth(0.38, 1, p) * 420).toFixed(1)})`);
-      lightsRef.current?.setAttribute('transform', `translate(${(-(roll * 2200) - clamp((p - 0.4) / 0.6) * 600).toFixed(1)} 0)`);
-      starsRef.current?.setAttribute('transform', `translate(0 ${(p * 60).toFixed(1)})`);
-      if (cloudsRef.current) {
-        cloudsRef.current.setAttribute('transform', `translate(${(-p * 200).toFixed(1)} ${(560 - smooth(0.45, 1, p) * 520).toFixed(1)})`);
-        cloudsRef.current.style.opacity = String(smooth(0.42, 0.62, p));
+    const relayout = () => {
+      const w = window.innerWidth;
+      const h = window.innerHeight;
+      const pose = planePose(0, w, h);
+      layout = { w, h, k: pose.k, x0: pose.view.x0, y0: pose.view.y0 };
+      const plane = planeRef.current;
+      if (plane) {
+        const pw = 200 * pose.s0 * pose.k;
+        plane.style.width = `${pw}px`;
+        plane.style.height = `${pw / PLANE_RATIO}px`;
       }
-      if (trailRef.current) {
-        trailRef.current.style.opacity = String(smooth(0.5, 0.7, p) * 0.7);
-        trailRef.current.setAttribute('d', `M${(x - 95 * s).toFixed(1)} ${(y + 10).toFixed(1)} Q ${(x - 500).toFixed(1)} ${(y + 160).toFixed(1)} ${(x - 900).toFixed(1)} ${(y + 260).toFixed(1)}`);
+      const lights = lightsRef.current;
+      if (lights) {
+        lights.style.top = `${(714 - layout.y0) * layout.k}px`;
+        lights.style.height = `${46 * layout.k}px`;
+        lights.style.setProperty('--gap', `${LIGHT_GAP * layout.k}px`);
+      }
+    };
+
+    const draw = (p: number) => {
+      const { k, x0, y0 } = layout;
+      const pose = planePose(p, layout.w, layout.h);
+      const px = (pose.x - x0) * k;
+      const py = (pose.y - y0) * k;
+      const plane = planeRef.current;
+      if (plane) {
+        plane.style.transform = `translate3d(${(px - plane.offsetWidth / 2).toFixed(1)}px, ${(py - plane.offsetHeight / 2).toFixed(1)}px, 0) rotate(${pose.rot.toFixed(2)}deg) scale(${(pose.s / pose.s0).toFixed(4)})`;
+      }
+      if (trailRef.current) trailRef.current.style.opacity = (smooth(0.5, 0.7, p) * 0.8).toFixed(3);
+      if (groundRef.current) groundRef.current.style.transform = `translate3d(0, ${(smooth(0.38, 1, p) * 420 * k).toFixed(1)}px, 0)`;
+      if (lightsRef.current) {
+        const run = (pose.roll * 2200 + clamp((p - 0.4) / 0.6) * 600) * k;
+        lightsRef.current.style.transform = `translate3d(${(-(run % (LIGHT_GAP * k))).toFixed(1)}px, 0, 0)`;
+      }
+      if (starsRef.current) starsRef.current.style.transform = `translate3d(0, ${(p * 60 * k).toFixed(1)}px, 0)`;
+      if (cloudsRef.current) {
+        cloudsRef.current.style.transform = `translate3d(${(-p * 200 * k).toFixed(1)}px, ${((560 - smooth(0.45, 1, p) * 520) * k).toFixed(1)}px, 0)`;
+        cloudsRef.current.style.opacity = smooth(0.42, 0.62, p).toFixed(3);
       }
       if (titleRef.current) {
-        const o = 1 - smooth(0.02, 0.1, p);
-        titleRef.current.style.opacity = String(o);
-        titleRef.current.style.transform = `translateY(${(-p * 120).toFixed(1)}px)`;
+        titleRef.current.style.opacity = (1 - smooth(0.02, 0.1, p)).toFixed(3);
+        titleRef.current.style.transform = `translate3d(0, ${(-p * 120).toFixed(1)}px, 0)`;
       }
       const bands: [number, number][] = [[0.1, 0.36], [0.38, 0.66], [0.68, 2]];
       capRefs.current.forEach((el, i) => {
         if (!el) return;
         const o = band(p, bands[i][0], bands[i][1]);
-        el.style.opacity = String(o);
-        el.style.transform = `translateY(${((1 - o) * 24).toFixed(1)}px)`;
-        el.style.pointerEvents = o > 0.5 ? 'auto' : 'none';
+        el.style.opacity = o.toFixed(3);
+        el.style.transform = `translate3d(0, ${((1 - o) * 24).toFixed(1)}px, 0)`;
+        el.style.visibility = o < 0.01 ? 'hidden' : 'visible';
       });
       if (progRef.current) progRef.current.style.transform = `scaleX(${p.toFixed(4)})`;
+      void y0;
     };
-    const onScroll = () => {
-      if (!raf) raf = requestAnimationFrame(render);
+
+    // Ease the shown progress toward the scroll position every frame: smooth even with stepped mouse wheels.
+    const tick = () => {
+      raf = 0;
+      const t = target();
+      shown = shown < 0 || reduce ? t : shown + (t - shown) * 0.16;
+      if (Math.abs(t - shown) < 0.0004) shown = t;
+      draw(shown);
+      if (shown !== t) raf = requestAnimationFrame(tick);
     };
-    render();
-    window.addEventListener('scroll', onScroll, { passive: true });
-    window.addEventListener('resize', onScroll);
+    const kick = () => {
+      if (!raf) raf = requestAnimationFrame(tick);
+    };
+    const onResize = () => {
+      relayout();
+      kick();
+    };
+
+    relayout();
+    tick();
+    window.addEventListener('scroll', kick, { passive: true });
+    window.addEventListener('resize', onResize);
     return () => {
-      window.removeEventListener('scroll', onScroll);
-      window.removeEventListener('resize', onScroll);
+      window.removeEventListener('scroll', kick);
+      window.removeEventListener('resize', onResize);
       cancelAnimationFrame(raf);
     };
   }, []);
@@ -167,32 +184,21 @@ export default function Landing({ onLaunch, prefetch }: Props) {
 
       <section className="lp-hero" ref={heroRef} aria-label="Take-off story">
         <div className="lp-sticky">
-          <svg className="lp-scene" viewBox="0 0 1600 900" preserveAspectRatio="xMidYMid slice" aria-hidden="true">
-            <defs>
-              <linearGradient id="lp-sky" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="0" stopColor="#050816" />
-                <stop offset="0.55" stopColor="#0b1430" />
-                <stop offset="0.85" stopColor="#1b1f4a" />
-                <stop offset="1" stopColor="#3a1f4f" />
-              </linearGradient>
-              <radialGradient id="lp-glow" cx="0.5" cy="1" r="0.7">
-                <stop offset="0" stopColor="#f59e0b" stopOpacity="0.25" />
-                <stop offset="1" stopColor="#f59e0b" stopOpacity="0" />
-              </radialGradient>
-              <linearGradient id="lp-trail" x1="1" y1="0" x2="0" y2="0">
-                <stop offset="0" stopColor="#fff" stopOpacity="0.9" />
-                <stop offset="1" stopColor="#fff" stopOpacity="0" />
-              </linearGradient>
-            </defs>
-            <rect width="1600" height="900" fill="url(#lp-sky)" />
-            <g ref={starsRef}>
-              {STARS.map((s, i) => (
-                <circle key={i} cx={s.x} cy={s.y} r={s.r} fill="#fff" opacity={0.25 + (i % 5) * 0.12} />
-              ))}
-            </g>
-            <path ref={trailRef} fill="none" stroke="url(#lp-trail)" strokeWidth="3" strokeLinecap="round" style={{ opacity: 0 }} />
+          <div className="lp-sky" aria-hidden="true" />
+          <svg className="lp-layer" ref={starsRef} viewBox="0 0 1600 900" preserveAspectRatio="xMidYMid slice" aria-hidden="true">
+            {STARS.map((s, i) => (
+              <circle key={i} cx={s.x} cy={s.y} r={s.r} fill="#fff" opacity={0.25 + (i % 5) * 0.12} />
+            ))}
+          </svg>
 
-            <g ref={groundRef}>
+          <div className="lp-layer" ref={groundRef} aria-hidden="true">
+            <svg className="lp-fill" viewBox="0 0 1600 900" preserveAspectRatio="xMidYMid slice">
+              <defs>
+                <radialGradient id="lp-glow" cx="0.5" cy="1" r="0.7">
+                  <stop offset="0" stopColor="#f59e0b" stopOpacity="0.25" />
+                  <stop offset="1" stopColor="#f59e0b" stopOpacity="0" />
+                </radialGradient>
+              </defs>
               <rect x="0" y="560" width="1600" height="200" fill="url(#lp-glow)" />
               {SKYLINE.map((b, i) => (
                 <g key={i}>
@@ -202,33 +208,22 @@ export default function Landing({ onLaunch, prefetch }: Props) {
                   ))}
                 </g>
               ))}
-              <rect x="0" y="690" width="1600" height="210" fill="#070b16" />
+              <rect x="0" y="690" width="1600" height="900" fill="#070b16" />
               <rect x="0" y="716" width="1600" height="40" fill="#111827" />
-              <g ref={lightsRef}>
-                {LIGHTS.map((x) => (
-                  <g key={x}>
-                    <rect x={x} y="734" width="28" height="3" rx="1.5" fill="#e2e8f0" opacity="0.55" />
-                    <circle cx={x + 10} cy="714" r="2.4" fill="#38bdf8" />
-                    <circle cx={x + 10} cy="758" r="2.4" fill="#22c55e" />
-                  </g>
-                ))}
-              </g>
-            </g>
+            </svg>
+            <div className="lp-lights" ref={lightsRef} />
+          </div>
 
-            <g ref={cloudsRef} style={{ opacity: 0 }}>
-              {[[100, 120, 1], [520, 40, 0.8], [980, 160, 1.2], [1380, 60, 0.9], [300, 330, 1.1], [1150, 360, 0.8]].map(([cx, cy, k], i) => (
-                <g key={i} transform={`translate(${cx} ${cy}) scale(${k})`} opacity={0.5 + (i % 3) * 0.15}>
-                  <ellipse cx="0" cy="0" rx="140" ry="34" fill="#1e2a4a" />
-                  <ellipse cx="-50" cy="-18" rx="70" ry="30" fill="#24335a" />
-                  <ellipse cx="40" cy="-24" rx="80" ry="36" fill="#2a3b66" />
-                </g>
-              ))}
-            </g>
+          <div className="lp-layer lp-clouds" ref={cloudsRef} aria-hidden="true">
+            {CLOUDS.map(([x, y, s], i) => (
+              <div key={i} className="lp-cloud" style={{ left: `${x}%`, top: `${y}%`, transform: `scale(${s})`, opacity: 0.55 + (i % 3) * 0.15 }} />
+            ))}
+          </div>
 
-            <g ref={planeRef}>
-              <Plane />
-            </g>
-          </svg>
+          <div className="lp-plane" ref={planeRef} aria-hidden="true">
+            <div className="lp-trail" ref={trailRef} />
+            <img src="/plane-737.webp" alt="" width={940} height={286} decoding="async" fetchPriority="high" />
+          </div>
 
           <div className="lp-copy">
             <div className="lp-title" ref={titleRef}>
@@ -293,7 +288,7 @@ export default function Landing({ onLaunch, prefetch }: Props) {
         <a className="lp-btn big" href="/simulate" onClick={launch} onMouseEnter={() => void prefetch()}>
           Launch the simulator →
         </a>
-        <p className="lp-foot">Built for Prompt Wars · React, TypeScript, Gemini, Vercel</p>
+        <p className="lp-foot">Built for Prompt Wars · React, TypeScript, Gemini, Vercel · Aircraft drawing: Julien Scavini, Wikimedia Commons, CC BY-SA 3.0</p>
       </section>
     </div>
   );
