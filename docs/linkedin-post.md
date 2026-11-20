@@ -9,7 +9,7 @@ For #PromptWars I built **Domino Sky**: an interactive simulator that shows how 
 
 The key design rule: **the AI explains, the code calculates.** A deterministic TypeScript engine produces every number. Gemini must cite numbers as references to engine facts, and a verifier checks every number it writes before the answer is shown ("✓ 15/15 numbers match the engine"). If a check fails, a rule-based dispatcher takes over.
 
-🔗 Live: <YOUR VERCEL URL>
+🔗 Live: https://domino-sky-five.vercel.app
 💻 Code: https://github.com/signalfern/domino-sky
 
 Built live in 3 hours with React, TypeScript, Vite, Vercel and the Gemini API.
