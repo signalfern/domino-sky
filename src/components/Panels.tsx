@@ -164,6 +164,7 @@ export function WhyPanel({ sim, closures, flightId }: { sim: SimResult; closures
   const target = sim.flights[flightId];
   const root = closures.find((c) => c.id === target.rootClosureId);
   const conns = sim.connections.filter((c) => (c.from === flightId || c.to === flightId) && c.status !== 'ok');
+  const crewOf = (id: string) => sim.crews.find((c) => c.id === id);
   return (
     <section className="panel" aria-label="Why is it late">
       <h2>Why is {flightId} {target.cancelled ? 'cancelled' : target.delay > 0 ? 'late' : 'on time'}?</h2>
@@ -189,7 +190,11 @@ export function WhyPanel({ sim, closures, flightId }: { sim: SimResult; closures
                   <span className={`pill ${t}`}>{r.cancelled ? 'CANCELLED' : r.delay > 0 ? `+${r.delay} min` : 'on time'}</span>
                 </div>
                 <div className="why-text">
-                  {causePhrase(r)}. {r.cancelled ? `${r.pax} passengers stranded.` : `Scheduled ${fmt(r.schedDep)}, now ${fmt(r.dep)} → lands ${fmt(r.arr)}.`}
+                  {causePhrase(r)}
+                  {r.cancelReason === 'crew_timeout' && crewOf(r.crewId) && r.id === chain.find((x) => x.cancelReason === 'crew_timeout')?.id
+                    ? ` (${r.crewId} would land ${fmt(r.arr)}: ${r.arr - crewOf(r.crewId)!.dutyStart} of ${crewOf(r.crewId)!.max} duty min)`
+                    : ''}
+                  . {r.cancelled ? `${r.pax} passengers stranded.` : `Scheduled ${fmt(r.schedDep)}, now ${fmt(r.dep)} → lands ${fmt(r.arr)}.`}
                 </div>
               </div>
             </div>
