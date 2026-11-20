@@ -51,7 +51,8 @@ async function generate<T>(
   const errors: string[] = [];
   const deadline = Date.now() + TOTAL_BUDGET_MS;
   for (const model of models) {
-    for (const thinking of [true, false]) {
+    let retried = false;
+    for (let attempt = 0, thinking = true; attempt < 3; attempt++) {
       const left = deadline - Date.now();
       if (left < 2_000) throw new Error(`Gemini: out of time (${errors.join('; ')})`);
       const ctrl = new AbortController();
@@ -66,8 +67,16 @@ async function generate<T>(
         if (!res.ok) {
           const detail = (await res.text().catch(() => '')).slice(0, 160).replace(/\s+/g, ' ');
           errors.push(`${model}${thinking ? '' : ' (no thinking cfg)'}: HTTP ${res.status} ${detail}`);
-          if (res.status === 400 && thinking && /thinking/i.test(detail)) continue; // retry without thinking config
+          if (res.status === 400 && thinking && /thinking/i.test(detail)) {
+            thinking = false; // model does not take a thinking config: retry plain
+            continue;
+          }
           if (res.status === 401 || res.status === 403) throw new Error(`Gemini HTTP ${res.status}`); // bad key: no point retrying
+          if ((res.status === 429 || res.status === 503) && !retried) {
+            retried = true; // demand spikes are short: one quick retry on the same model
+            await new Promise((r) => setTimeout(r, 700));
+            continue;
+          }
           break; // retired (404), overloaded (429/5xx) or rejected (400): try the next model
         }
         const data = (await res.json()) as { candidates?: { content?: { parts?: { text?: string }[] } }[] };
