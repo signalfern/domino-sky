@@ -5,7 +5,7 @@
 > passenger connections and crew duty limits — then asks a **Gemini AI dispatcher** to recover the day,
 > with **every number it says checked against a deterministic engine**.
 
-**Live demo:** https://domino-sky-five.vercel.app
+[![CI](https://github.com/signalfern/domino-sky/actions/workflows/ci.yml/badge.svg)](https://github.com/signalfern/domino-sky/actions/workflows/ci.yml) **Live demo:** https://domino-sky-five.vercel.app
 
 Built for **Prompt Wars** (Google for Developers × Hack2skill).
 
