@@ -1,5 +1,5 @@
-import { buildUserPrompt, isDispatchReply, RESPONSE_SCHEMA, SYSTEM_INSTRUCTION } from '../ai/prompt';
-import type { DispatchContext, DispatchReply } from '../ai/prompt';
+import { buildUserPrompt, isDispatchReply, RESPONSE_SCHEMA, SYSTEM_INSTRUCTION } from '../ai/prompt.js';
+import type { DispatchContext, DispatchReply } from '../ai/prompt.js';
 
 const FALLBACK_MODELS = ['gemini-flash-latest', 'gemini-3.8-flash', 'gemini-2.5-flash'];
 const MAX_BODY = 120_000;
