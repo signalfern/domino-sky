@@ -3,19 +3,29 @@ import { network } from '../data/network';
 import { fmt } from '../engine/time';
 import type { Closure, FlightResult, SimResult } from '../engine/types';
 import { TONE_COLOR, tone } from '../ui';
+import { INDIA_RINGS } from '../data/indiaOutline';
 
-const W = 520;
+// Equirectangular projection fitted to all of India; x is scaled by cos(22°) so shapes keep their proportions.
+const LNG0 = 67.6, LNG1 = 97.9, LAT0 = 6.2, LAT1 = 37.6;
+const PAD = 16;
 const H = 640;
-const PAD = 34;
-const LNG0 = 72, LNG1 = 92.6, LAT0 = 7.6, LAT1 = 31.6;
+const KY = (H - 2 * PAD) / (LAT1 - LAT0);
+const KX = KY * Math.cos((22 * Math.PI) / 180);
+const W = Math.round(KX * (LNG1 - LNG0) + 2 * PAD);
 
-const project = (lat: number, lng: number) => ({
-  x: PAD + ((lng - LNG0) / (LNG1 - LNG0)) * (W - 2 * PAD),
-  y: PAD + ((LAT1 - lat) / (LAT1 - LAT0)) * (H - 2 * PAD),
-});
+const project = (lat: number, lng: number) => ({ x: PAD + (lng - LNG0) * KX, y: PAD + (LAT1 - lat) * KY });
+
+const INDIA_PATH = INDIA_RINGS.map((r) => {
+  let d = '';
+  for (let i = 0; i < r.length; i += 2) {
+    const p = project(r[i + 1], r[i]);
+    d += `${i ? 'L' : 'M'}${p.x.toFixed(1)},${p.y.toFixed(1)}`;
+  }
+  return `${d}Z`;
+}).join('');
 
 const POS = Object.fromEntries(network.airports.map((a) => [a.id, project(a.lat, a.lng)]));
-const R = { mega_hub: 8, regional_hub: 6, spoke: 4.2 } as const;
+const R = { mega_hub: 7, regional_hub: 5.5, spoke: 4 } as const;
 
 interface Curve { x0: number; y0: number; cx: number; cy: number; x1: number; y1: number }
 
@@ -92,6 +102,10 @@ function NetworkMapImpl({ sim, closures, time, selected, chain, onAirport, onFli
           </pattern>
         </defs>
         <rect width={W} height={H} fill="url(#dots)" />
+        <path d={INDIA_PATH} fill="#111c34" stroke="#2f4470" strokeWidth={1} strokeLinejoin="round" />
+        <text x={W - PAD - 4} y={H - PAD - 4} textAnchor="end" fontSize="9" fill="#3b4a6b" fontFamily="var(--mono)">
+          India · official boundary
+        </text>
 
         {routes.map(([key, r]) => {
           const c = CURVES.get(key)!;

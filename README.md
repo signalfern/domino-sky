@@ -79,4 +79,6 @@ Import the repo in Vercel (framework: Vite), add the environment variable `GEMIN
 
 ## Dataset
 
+- Map outline: India official boundary from [DataMeet `india-composite.geojson`](https://github.com/datameet/maps/tree/master/Country) (CC0), simplified and embedded (`src/data/indiaOutline.ts`).
+
 `src/data/flight_network.json` — 16 airports, 70 flights, 16 aircraft, 21 connections, 16 crews, 2 spare aircraft (provided by the organisers).
