@@ -56,6 +56,11 @@ export default function App({ onHome }: { onHome?: () => void }) {
   const afterLabel = applied ?? 'your moves';
   const after = !!recovered && showAfter;
   const sim = after ? recovered! : disrupted;
+  const deepest = useMemo(() => {
+    let best: { id: string; tail: string; depth: number } | undefined;
+    for (const r of Object.values(sim.flights)) if (r.depth > (best?.depth ?? 0)) best = { id: r.id, tail: r.tail, depth: r.depth };
+    return best;
+  }, [sim]);
   const chain = useMemo(() => new Set(selected ? dominoChain(sim, selected).map((r) => r.id) : []), [sim, selected]);
 
   useEffect(() => {
@@ -167,6 +172,8 @@ export default function App({ onHome }: { onHome?: () => void }) {
             onRemoveMove={removeMove}
             onResetMoves={() => applyPlan(null)}
             onOpen={openDetails}
+            deepest={deepest}
+            onTrace={setSelected}
           />
         </div>
 

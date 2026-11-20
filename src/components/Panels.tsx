@@ -28,9 +28,12 @@ interface ImpactProps {
   onRemoveMove: (key: string) => void;
   onResetMoves: () => void;
   onOpen: (tab: DetailTab) => void;
+  /** Deepest domino in the current view, for one-click chain tracing. */
+  deepest?: { id: string; tail: string; depth: number };
+  onTrace: (id: string) => void;
 }
 
-export function Impact({ closures, current, before, planId, moves, movesSim, onRemoveMove, onResetMoves, onOpen }: ImpactProps) {
+export function Impact({ closures, current, before, planId, moves, movesSim, onRemoveMove, onResetMoves, onOpen, deepest, onTrace }: ImpactProps) {
   const where = closures.map((c) => cityOf[c.airport]).join(' + ');
   return (
     <section className="card" aria-labelledby="s2">
@@ -75,6 +78,11 @@ export function Impact({ closures, current, before, planId, moves, movesSim, onR
           <span className="mono">{fmtNum(current.totalDelayMin)}</span> delay min · longest <span className="mono">{current.maxDelay}</span> min ·{' '}
           <span className="mono">{fmtNum(current.delayedPax)}</span> passengers late
         </p>
+      )}
+      {deepest && deepest.depth > 1 && (
+        <button className="btn small trace" onClick={() => onTrace(deepest.id)}>
+          ⛓ Trace the longest chain: {deepest.id} on {deepest.tail} ({deepest.depth} steps)
+        </button>
       )}
       {moves.length > 0 && (
         <div className="moves" aria-label="Recovery moves">
