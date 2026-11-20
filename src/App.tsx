@@ -11,7 +11,9 @@ import { NetworkMap } from './components/NetworkMap';
 import { Timeline } from './components/Timeline';
 import { Controls } from './components/Controls';
 import { Dispatcher } from './components/Dispatcher';
-import { Details, Impact, WhyDrawer, type DetailTab } from './components/Panels';
+import { Details, type DetailTab } from './components/Details';
+import { Impact } from './components/Impact';
+import { WhyDrawer } from './components/WhyDrawer';
 import { PRESETS } from './ui';
 
 type View = 'map' | 'timeline' | 'details';

@@ -67,7 +67,7 @@ src/ai/         prompt.ts    (system instruction + JSON schema, shared with serv
                 dispatch.ts  (context builder, Gemini call → verify → retry → rule fallback)
 src/server/     gemini.ts    (Gemini REST generateContent with structured JSON output)
 api/dispatch.ts Vercel serverless function (API key stays server-side)
-src/components/ NetworkMap (SVG), Timeline, Controls, Dispatcher, Panels (KPIs, tables, why-chain)
+src/components/ NetworkMap (SVG) + useZoom, Timeline, Controls (incl. crisis box), Dispatcher, Impact, Details, WhyDrawer
 tests/          Vitest: engine, planner, verifier, dispatcher fallbacks
 ```
 
