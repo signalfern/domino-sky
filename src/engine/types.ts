@@ -71,6 +71,9 @@ export type Action =
   | { kind: 'swap'; spareId: string; flightId: string }
   | { kind: 'hold'; connectionId: string };
 
+export type SwapAction = Extract<Action, { kind: 'swap' }>;
+export const isSwap = (a: Action): a is SwapAction => a.kind === 'swap';
+
 export interface Scenario {
   closures: Closure[];
   actions: Action[];

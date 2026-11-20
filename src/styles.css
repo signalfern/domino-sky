@@ -6,7 +6,7 @@
   --border2: #273352;
   --text: #e8edf7;
   --muted: #8b97b0;
-  --faint: #5a6782;
+  --faint: #7d8aa6; /* ≥4.5:1 on panels (WCAG AA) */
   --accent: #38bdf8;
   --ok: #22c55e;
   --minor: #f59e0b;
@@ -188,6 +188,11 @@ tbody tr.sel td { background: #0c2a4455; }
 .drawer-head h3 { margin: 0; font-size: 14px; flex: 1; }
 .why-step { display: grid; grid-template-columns: 22px minmax(0, 1fr); gap: 10px; position: relative; padding-bottom: 12px; }
 .why-step:not(:last-child)::before { content: ''; position: absolute; left: 10px; top: 24px; bottom: 2px; width: 2px; background: var(--border2); }
+.why-step[data-tone='ok'] { --c: var(--ok); }
+.why-step[data-tone='minor'] { --c: var(--minor); }
+.why-step[data-tone='major'] { --c: var(--major); }
+.why-step[data-tone='cancel'] { --c: var(--cancel); }
+.why-step[data-tone='storm'] { --c: var(--storm); }
 .why-dot { width: 22px; height: 22px; border-radius: 7px; display: grid; place-items: center; font-size: 11px; font-weight: 800; color: #0b1020; background: var(--c, var(--border2)); font-family: var(--mono); }
 .why-title { font-weight: 700; font-size: 13px; display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
 .why-text { font-size: 12.5px; color: #c3cbdb; }
@@ -242,3 +247,22 @@ dialog ol { padding-left: 18px; display: grid; gap: 6px; font-size: 13.5px; colo
 .map-zoom button:disabled { opacity: .35; cursor: default; }
 .map-zoom span { font-size: 10.5px; color: var(--muted); }
 .map-svg { user-select: none; }
+
+/* small utilities (replace one-off inline styles) */
+.grow { flex: 1; }
+.flush { margin-top: 0; }
+.spaced { margin-top: 8px; }
+.small { font-size: 12.5px; }
+.inline { margin-left: 8px; }
+.better { color: #86efac; }
+.worse { color: #fca5a5; }
+.shimmers { display: grid; gap: 8px; margin-top: 14px; }
+.plane-hit { cursor: pointer; }
+.closed-now { color: #d8b4fe; }
+.sw-ok { background: var(--ok); }
+.sw-minor { background: var(--minor); }
+.sw-major { background: var(--major); }
+
+.skip { position: absolute; left: 12px; top: -48px; z-index: 50; background: var(--accent); color: #04121f; font-weight: 700; padding: 8px 12px; border-radius: 8px; text-decoration: none; }
+.skip:focus { top: 8px; }
+.stage-body:focus { outline: none; }

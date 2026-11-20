@@ -74,11 +74,19 @@ tests/          Vitest: engine, planner, verifier, dispatcher fallbacks
 - No map tiles, no chart library: hand-written SVG and CSS, React only. Fast first load, 60 fps playback.
 - The full plan search (≈100 simulations) runs in the browser in a few milliseconds.
 
+## Quality, security, accessibility
+
+- **Checks:** `npm run check` = typecheck (strict TS) + ESLint (`typescript-eslint` strict + stylistic, React Hooks rules) + 60+ Vitest tests + production build. The same steps run in GitHub Actions on every push ([`.github/workflows/ci.yml`](.github/workflows/ci.yml)).
+- **Tests cover:** engine rules, the judges' 4 stress tests, planner, fact verification, dispatcher fallbacks, crisis parser, Gemini client (retry on overload, retired models, bad key, schema), rate limiter, landing animation bounds.
+- **Security:** API key only on the server; strict CSP, `nosniff`, frame-deny, HSTS, referrer and permissions policies (`vercel.json`); `/api/dispatch` accepts JSON POST only, size-capped input, per-client rate limit (20/min), schema-validated model output, generic errors to the browser (details stay in server logs). User text never reaches the engine without validation against the network.
+- **Accessibility:** WCAG AA text contrast (≥ 4.99:1), keyboard-operable map (airports are buttons), WAI-ARIA tabs with arrow keys, skip link, live region for impact changes, labelled controls, `prefers-reduced-motion` respected.
+
 ## Run locally
 
 ```bash
 npm install
 npm test          # unit tests
+npm run check     # typecheck + lint + tests + build (what CI runs)
 npm run dev       # http://localhost:5173
 ```
 

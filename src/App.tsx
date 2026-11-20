@@ -16,6 +16,7 @@ import { PRESETS } from './ui';
 
 type View = 'map' | 'timeline' | 'details';
 const SPEEDS = [{ v: 15, l: '1×' }, { v: 45, l: '3×' }, { v: 120, l: '8×' }];
+const VIEWS: { id: View; label: string }[] = [{ id: 'map', label: 'Map' }, { id: 'timeline', label: 'Timeline' }, { id: 'details', label: 'Details' }];
 const T_MIN = 5 * 60;
 const T_MAX = 25 * 60;
 
@@ -125,10 +126,20 @@ export default function App({ onHome }: { onHome?: () => void }) {
     setView('details');
   };
 
+  // Arrow keys move between view tabs (WAI-ARIA tabs pattern).
+  const tabKeys = (e: React.KeyboardEvent) => {
+    if (e.key !== 'ArrowRight' && e.key !== 'ArrowLeft') return;
+    const i = VIEWS.findIndex((v) => v.id === view);
+    const next = VIEWS[(i + (e.key === 'ArrowRight' ? 1 : VIEWS.length - 1)) % VIEWS.length].id;
+    setView(next);
+    document.getElementById(`tab-${next}`)?.focus();
+  };
+
   const t = Math.round(time);
 
   return (
     <div className="app">
+      <a className="skip" href="#stage-panel">Skip to the network view</a>
       <header className="topbar">
         <a className="brand" href="/" onClick={(e) => { if (onHome) { e.preventDefault(); onHome(); } }} aria-label="Domino Sky home">
           <div className="brand-mark" aria-hidden="true">
@@ -161,10 +172,12 @@ export default function App({ onHome }: { onHome?: () => void }) {
 
         <section className="card stage" aria-label="Network view">
           <div className="stage-head">
-            <div className="seg" role="tablist" aria-label="View">
-              <button role="tab" aria-selected={view === 'map'} onClick={() => setView('map')}>Map</button>
-              <button role="tab" aria-selected={view === 'timeline'} onClick={() => setView('timeline')}>Timeline</button>
-              <button role="tab" aria-selected={view === 'details'} onClick={() => setView('details')}>Details</button>
+            <div className="seg" role="tablist" aria-label="View" onKeyDown={tabKeys}>
+              {VIEWS.map((v) => (
+                <button key={v.id} id={`tab-${v.id}`} role="tab" aria-selected={view === v.id} aria-controls="stage-panel" tabIndex={view === v.id ? 0 : -1} onClick={() => setView(v.id)}>
+                  {v.label}
+                </button>
+              ))}
             </div>
             {view === 'details' && (
               <div className="seg" role="tablist" aria-label="Details">
@@ -182,16 +195,16 @@ export default function App({ onHome }: { onHome?: () => void }) {
             ) : (
               view !== 'details' && (
                 <div className="legend" aria-label="Legend">
-                  <span><i style={{ background: 'var(--ok)' }} />on time</span>
-                  <span><i style={{ background: 'var(--minor)' }} />≤30 min</span>
-                  <span><i style={{ background: 'var(--major)' }} />&gt;30 min</span>
+                  <span><i className="sw-ok" />on time</span>
+                  <span><i className="sw-minor" />≤30 min</span>
+                  <span><i className="sw-major" />&gt;30 min</span>
                   <span><i className="hatch" />cancelled</span>
                 </div>
               )
             )}
           </div>
 
-          <div className="stage-body">
+          <div className="stage-body" id="stage-panel" role="tabpanel" aria-labelledby={`tab-${view}`} tabIndex={-1}>
             {view === 'map' && <NetworkMap sim={sim} closures={closures} time={t} selected={selected} chain={chain} onAirport={onAirport} onFlight={setSelected} />}
             {view === 'timeline' && <Timeline sim={sim} closures={closures} time={t} selected={selected} chain={chain} onFlight={setSelected} />}
             {view === 'details' && <Details sim={sim} tab={detailTab} selected={selected} onFlight={setSelected} />}
@@ -203,7 +216,7 @@ export default function App({ onHome }: { onHome?: () => void }) {
               <button className="play" onClick={() => { if (time >= T_MAX) setTime(T_MIN); setPlaying((p) => !p); }} aria-label={playing ? 'Pause' : 'Play the day'}>
                 {playing ? '❚❚' : '▶'}
               </button>
-              <button className="btn small" onClick={() => setSpeed((s) => (s + 1) % SPEEDS.length)} aria-label="Playback speed">{SPEEDS[speed].l}</button>
+              <button className="btn small" onClick={() => setSpeed((s) => (s + 1) % SPEEDS.length)} aria-label={`Playback speed ${SPEEDS[speed].l}, change`}>{SPEEDS[speed].l}</button>
               <input type="range" min={T_MIN} max={T_MAX} step={1} value={t} onChange={(e) => { setPlaying(false); setTime(Number(e.target.value)); }} aria-label="Time of day" />
               <span className="mono">{fmt(t)}</span>
             </div>
@@ -227,7 +240,7 @@ export default function App({ onHome }: { onHome?: () => void }) {
           <li>The engine tests every recovery move (cancel a flight, use a spare aircraft, hold a flight for connecting passengers) and scores each plan.</li>
           <li>The Gemini AI picks a plan and explains it. It never calculates. Every number it writes is checked against the engine before you see it.</li>
         </ol>
-        <p className="muted" style={{ fontSize: 12.5 }}>
+        <p className="muted small">
           {network.airports.length} airports · {network.flights.length} flights · {new Set(network.flights.map((f) => f.tail_id)).size} aircraft · {network.connections.length} connections · {network.spare_aircraft.length} spare aircraft
         </p>
         <button className="btn primary" onClick={() => aboutRef.current?.close()}>Got it</button>

@@ -221,7 +221,7 @@ export default function Landing({ onLaunch, prefetch }: Props) {
 
           <div className="lp-plane" ref={planeRef} aria-hidden="true">
             <div className="lp-trail" ref={trailRef} />
-            <img src="/plane-737.webp" alt="" width={940} height={286} decoding="async" fetchPriority="high" />
+            <img src="/plane-737.webp" alt="" width={940} height={286} decoding="async" />
           </div>
 
           <div className="lp-copy">

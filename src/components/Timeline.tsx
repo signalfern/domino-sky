@@ -23,8 +23,8 @@ function TimelineImpl({ sim, closures, time, selected, chain, onFlight }: Props)
   const span = t1 - T0;
   const pos = (m: number) => `${(((m - T0) / span) * 100).toFixed(3)}%`;
   const width = (a: number, b: number) => `${(((b - a) / span) * 100).toFixed(3)}%`;
-  const hours: number[] = [];
-  for (let h = Math.ceil(T0 / 60); h * 60 <= t1; h++) hours.push(h * 60);
+  const firstHour = Math.ceil(T0 / 60);
+  const hours = Array.from({ length: Math.floor(t1 / 60) - firstHour + 1 }, (_, i) => (firstHour + i) * 60);
 
   const rows = [...TAILS, ...SPARES].map((tail) => ({
     tail,

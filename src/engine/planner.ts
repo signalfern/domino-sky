@@ -1,4 +1,5 @@
 import { simulate, indexNetwork } from './simulate';
+import { isSwap } from './types';
 import type { Action, Closure, Network, SimResult, Metrics } from './types';
 
 export interface PlanDelta {
@@ -56,7 +57,7 @@ export function describeAction(net: Network, a: Action, sim?: SimResult): string
 export function candidateActions(net: Network, current: SimResult, taken: Action[]): Action[] {
   const idx = indexNetwork(net);
   const takenKeys = new Set(taken.map(actionKey));
-  const usedSpares = new Set(taken.filter((a) => a.kind === 'swap').map((a) => (a as { spareId: string }).spareId));
+  const usedSpares = new Set(taken.filter(isSwap).map((a) => a.spareId));
   const out: Action[] = [];
   const flights = Object.values(current.flights);
   for (const r of flights) {

@@ -35,7 +35,7 @@ async function generate<T>(
   preferredModel: string | undefined,
   fetchImpl: typeof fetch,
 ): Promise<{ data: T; model: string }> {
-  const models = [...new Set([preferredModel, ...FALLBACK_MODELS].filter(Boolean) as string[])];
+  const models = [...new Set([preferredModel, ...FALLBACK_MODELS].filter((m): m is string => !!m))];
   const request = (thinking: boolean) =>
     JSON.stringify({
       systemInstruction: { parts: [{ text: system }] },

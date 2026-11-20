@@ -122,9 +122,9 @@ export function Controls({ closures, onChange, onPreset }: Props) {
         );
       })}
 
-      {closures.length === 0 && <p className="hint" style={{ marginTop: 0 }}>No airport is closed. Pick a scenario above or click an airport on the map.</p>}
+      {closures.length === 0 && <p className="hint flush">No airport is closed. Pick a scenario above or click an airport on the map.</p>}
       {closures.length < 3 && (
-        <button className="btn link" onClick={add} style={{ marginTop: 8 }}>
+        <button className="btn link spaced" onClick={add}>
           + {closures.length ? 'Close another airport' : 'Close an airport'}
         </button>
       )}

@@ -19,7 +19,7 @@ function BeforeAfter({ before, after }: { before: Metrics; after: Metrics }) {
       <div className="k">{k}</div>
       <div className="x">
         <s>{fmtNum(b)}→</s>
-        <span style={{ color: a < b ? '#86efac' : a > b ? '#fca5a5' : undefined }}>{fmtNum(a)}</span>
+        <span className={a < b ? 'better' : a > b ? 'worse' : undefined}>{fmtNum(a)}</span>
       </div>
     </div>
   );
@@ -38,7 +38,7 @@ function PlanCard({ p, base, rec, applied, onApply }: { p: Plan; base: Metrics; 
       <div className="plan-top">
         <span className="name">
           Plan {p.id}
-          {rec && <span className="badge ai" style={{ marginLeft: 8 }}>recommended</span>}
+          {rec && <span className="badge ai inline">recommended</span>}
         </span>
         {applied ? (
           <button className="btn small" onClick={() => onApply(null)}>Undo</button>
@@ -91,7 +91,7 @@ export function Dispatcher({ planSet, stale, status, outcome, applied, onAsk, on
             </button>
           )}
           {status === 'loading' && (
-            <div style={{ display: 'grid', gap: 8, marginTop: 14 }}>
+            <div className="shimmers" aria-hidden="true">
               <div className="shimmer" style={{ width: '90%' }} />
               <div className="shimmer" style={{ width: '70%' }} />
               <div className="shimmer" style={{ width: '80%' }} />
@@ -134,7 +134,7 @@ export function Dispatcher({ planSet, stale, status, outcome, applied, onAsk, on
         </details>
       )}
       {status === 'done' && (
-        <button className="btn link" onClick={onAsk} style={{ marginTop: 10 }}>↻ Ask again</button>
+        <button className="btn link spaced" onClick={onAsk}>↻ Ask again</button>
       )}
     </section>
   );

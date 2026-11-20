@@ -96,18 +96,18 @@ function durationIn(seg: string): { minutes: number | null; rest: string } {
   let minutes = 0;
   let found = false;
   let rest = seg;
-  const take = (re: RegExp, f: (m: RegExpExecArray) => number) => {
-    rest = rest.replace(re, (...args) => {
+  const take = (re: RegExp, f: (group: string) => number) => {
+    rest = rest.replace(re, (_match: string, group?: string) => {
       found = true;
-      minutes += f(args as unknown as RegExpExecArray);
+      minutes += f(group ?? '');
       return ' ';
     });
   };
   take(/\b(?:an?|one)\s+hour\s+and\s+a\s+half\b|\bone\s+and\s+a\s+half\s+hours?\b/gi, () => 90);
   take(/\bhalf\s+an?\s+hour\b/gi, () => 30);
-  take(/\b(\d+(?:\.\d+)?)\s*(?:hours?|hrs?|h)\b/gi, (m) => Math.round(Number(m[1]) * 60));
-  take(/\b(one|two|three|four|five|six|seven|eight|an|a)\s+hours?\b/gi, (m) => WORD_NUM[m[1].toLowerCase()] * 60);
-  take(/\b(\d+)\s*(?:minutes?|mins?|m)\b/gi, (m) => Number(m[1]));
+  take(/\b(\d+(?:\.\d+)?)\s*(?:hours?|hrs?|h)\b/gi, (g) => Math.round(Number(g) * 60));
+  take(/\b(one|two|three|four|five|six|seven|eight|an|a)\s+hours?\b/gi, (g) => WORD_NUM[g.toLowerCase()] * 60);
+  take(/\b(\d+)\s*(?:minutes?|mins?|m)\b/gi, (g) => Number(g));
   return { minutes: found ? minutes : null, rest };
 }
 

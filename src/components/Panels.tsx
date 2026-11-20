@@ -3,6 +3,7 @@ import { dominoChain } from '../engine/simulate';
 import { actionKey } from '../engine/planner';
 import { network } from '../data/network';
 import { dur, fmt } from '../engine/time';
+import { isSwap } from '../engine/types';
 import type { Action, Closure, Metrics, SimResult } from '../engine/types';
 import { cityOf, fmtNum, shortAction, tone } from '../ui';
 
@@ -36,7 +37,7 @@ export function Impact({ closures, current, before, planId, moves, movesSim, onR
       <h2 className="step-title" id="s2">
         <span className="step-num">2</span> {before ? `Impact after ${planId}` : 'Impact'}
       </h2>
-      <p className="summary">
+      <p className="summary" aria-live="polite">
         {closures.length === 0 ? (
           'Every flight runs on schedule.'
         ) : current.cost === 0 && !before ? (
@@ -86,8 +87,8 @@ export function Impact({ closures, current, before, planId, moves, movesSim, onR
             const key = actionKey(a);
             return (
               <div className="action" key={key}>
-                <span className="ic">{s.icon}</span>
-                <span style={{ flex: 1 }}>{s.text}</span>
+                <span className="ic" aria-hidden="true">{s.icon}</span>
+                <span className="grow">{s.text}</span>
                 <button className="icon-x" onClick={() => onRemoveMove(key)} aria-label={`Undo: ${s.text}`}>✕</button>
               </div>
             );
@@ -187,7 +188,7 @@ export function Details({ sim, tab, selected, onFlight }: DetailsProps) {
 /** One-click recovery moves for a selected flight. Only legal moves are offered. */
 function MoveButtons({ sim, flightId, actions, onMove }: { sim: SimResult; flightId: string; actions: Action[]; onMove: (a: Action) => void }) {
   const r = sim.flights[flightId];
-  const used = new Set(actions.filter((a) => a.kind === 'swap').map((a) => (a as { spareId: string }).spareId));
+  const used = new Set(actions.filter(isSwap).map((a) => a.spareId));
   const userCancelled = r.cancelReason === 'user';
   const moves: { a: Action; label: string }[] = [];
   if (!r.cancelled) moves.push({ a: { kind: 'cancel', flightId }, label: `Cancel ${flightId}` });
@@ -233,8 +234,8 @@ export function WhyDrawer({ sim, closures, flightId, actions, onMove, onClose }:
         <button className="icon-x" onClick={onClose} aria-label="Close">✕</button>
       </div>
       {root && (
-        <div className="why-step" style={{ ['--c' as string]: 'var(--storm)' }}>
-          <div className="why-dot">⛈</div>
+        <div className="why-step" data-tone="storm">
+          <div className="why-dot" aria-hidden="true">⛈</div>
           <div>
             <div className="why-title">{cityOf[root.airport]} ({root.airport}) closed</div>
             <div className="why-text mono">{fmt(root.start)}–{fmt(root.end)} · {dur(root.end - root.start)}</div>
@@ -245,7 +246,7 @@ export function WhyDrawer({ sim, closures, flightId, actions, onMove, onClose }:
         const t = tone(r);
         const firstTimeout = r.cancelReason === 'crew_timeout' && r.id === chain.find((x) => x.cancelReason === 'crew_timeout')?.id;
         return (
-          <div className="why-step" key={r.id} style={{ ['--c' as string]: `var(--${t === 'cancel' ? 'cancel' : t})` }}>
+          <div className="why-step" key={r.id} data-tone={t}>
             <div className="why-dot">{i + 1}</div>
             <div>
               <div className="why-title mono">
@@ -262,8 +263,8 @@ export function WhyDrawer({ sim, closures, flightId, actions, onMove, onClose }:
         );
       })}
       {conns.map((c) => (
-        <div className="why-step" key={c.id} style={{ ['--c' as string]: 'var(--storm)' }}>
-          <div className="why-dot">⇄</div>
+        <div className="why-step" key={c.id} data-tone="storm">
+          <div className="why-dot" aria-hidden="true">⇄</div>
           <div>
             <div className="why-title mono">{c.from} → {c.to} at {c.airport}</div>
             <div className="why-text">{c.pax} connecting passengers {c.status === 'missed' ? `miss it: ${c.gap} min to connect, need ${c.min}` : 'lose it to a cancellation'}.</div>
