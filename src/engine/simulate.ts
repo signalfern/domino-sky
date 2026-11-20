@@ -1,7 +1,7 @@
 import { toMin } from './time';
 import type {
   Action, Cause, CancelReason, Closure, ConnResult, CrewResult, FlightResult, Metrics,
-  Network, Scenario, SimResult, CapacityRow, Flight, Crew, Spare,
+  Network, Scenario, SimResult, CapacityRow, Flight, Crew, Spare, Connection,
 } from './types';
 
 /** Passenger-minutes charged per stranded passenger in the plan cost. */
@@ -15,6 +15,8 @@ interface Index {
   chains: Map<string, Flight[]>; // tail → legs in leg_order
   tails: string[];
   crewOf: Map<string, Crew>; // flight id → crew
+  conns: Map<string, Connection>;
+  sched: Map<string, { dep: number; arr: number }>; // parsed once
   spares: Map<string, Spare>;
   airports: Set<string>;
   capacity: Map<string, number>;
@@ -41,6 +43,8 @@ export function indexNetwork(net: Network): Index {
     chains,
     tails: [...chains.keys()].sort(),
     crewOf,
+    conns: new Map(net.connections.map((c) => [c.connection_id, c])),
+    sched: new Map(net.flights.map((f) => [f.flight_id, { dep: toMin(f.dep), arr: toMin(f.arr) }])),
     spares: new Map(net.spare_aircraft.map((s) => [s.tail_id, s])),
     airports: new Set(net.airports.map((a) => a.id)),
     capacity: new Map(net.airports.map((a) => [a.id, a.capacity_per_hour])),
@@ -94,13 +98,12 @@ interface ActionSets {
   warnings: string[];
 }
 
-function resolveActions(net: Network, idx: Index, actions: Action[]): ActionSets {
+function resolveActions(idx: Index, actions: Action[]): ActionSets {
   const cancels = new Set<string>();
   const swaps = new Map<string, string>();
   const holds = new Map<string, string[]>();
   const warnings: string[] = [];
   const usedSpares = new Set<string>();
-  const conns = new Map(net.connections.map((c) => [c.connection_id, c]));
   for (const a of actions) {
     if (a.kind === 'cancel') {
       if (idx.flights.has(a.flightId)) cancels.add(a.flightId);
@@ -121,7 +124,7 @@ function resolveActions(net: Network, idx: Index, actions: Action[]): ActionSets
         usedSpares.add(s.tail_id);
       }
     } else if (a.kind === 'hold') {
-      const c = conns.get(a.connectionId);
+      const c = idx.conns.get(a.connectionId);
       if (!c) warnings.push(`Unknown connection ${a.connectionId}`);
       else holds.set(c.to_flight, [...(holds.get(c.to_flight) ?? []), c.connection_id]);
     }
@@ -138,9 +141,9 @@ function resolveActions(net: Network, idx: Index, actions: Action[]): ActionSets
 export function simulate(net: Network, sc: Scenario): SimResult {
   const idx = indexNetwork(net);
   const closures = cleanClosures(net, sc.closures);
-  const acts = resolveActions(net, idx, sc.actions);
+  const acts = resolveActions(idx, sc.actions);
   const conns = net.connections;
-  const connById = new Map(conns.map((c) => [c.connection_id, c]));
+  const connById = idx.conns;
 
   let out = new Map<string, FlightResult>();
   let prevArr = new Map<string, number>();
@@ -156,15 +159,15 @@ export function simulate(net: Network, sc: Scenario): SimResult {
       let lastArr: number | null = null;
       let lastId: string | null = null;
       let aircraft = tail;
-      let crew = { id: idx.crewOf.get(legs[0].flight_id)!.crew_id, start: toMin(idx.crewOf.get(legs[0].flight_id)!.duty_start), max: idx.crewOf.get(legs[0].flight_id)!.max_duty_mins };
+      const own = idx.crewOf.get(legs[0].flight_id)!;
+      let crew = { id: own.crew_id, start: toMin(own.duty_start), max: own.max_duty_mins };
       let crewOut = false;
       let readyAt: number | null = null;
       let readyCause: Cause | undefined;
       let standbyCrew: CrewResult | null = null;
 
       for (const f of legs) {
-        const schedDep = toMin(f.dep);
-        const schedArr = toMin(f.arr);
+        const { dep: schedDep, arr: schedArr } = idx.sched.get(f.flight_id)!;
         const base: FlightResult = {
           id: f.flight_id, tail: aircraft, plannedTail: tail, crewId: crew.id, origin: f.origin,
           destination: f.destination, pax: f.pax, block: f.block_minutes, schedDep, schedArr,
@@ -221,7 +224,7 @@ export function simulate(net: Network, sc: Scenario): SimResult {
         for (const cid of acts.holds.get(f.flight_id) ?? []) {
           const c = connById.get(cid)!;
           if (prevCancelled.has(c.from_flight)) continue;
-          const fromArr = prevArr.get(c.from_flight) ?? toMin(idx.flights.get(c.from_flight)!.arr);
+          const fromArr = prevArr.get(c.from_flight) ?? idx.sched.get(c.from_flight)!.arr;
           const need = fromArr + c.min_connect_minutes;
           if (need > dep) {
             dep = need;

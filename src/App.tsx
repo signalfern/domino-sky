@@ -4,7 +4,8 @@ import { simulate, dominoChain } from './engine/simulate';
 import { buildPlans } from './engine/planner';
 import { buildFacts } from './engine/facts';
 import { fmt } from './engine/time';
-import type { Closure } from './engine/types';
+import type { Action, Closure } from './engine/types';
+import { actionKey } from './engine/planner';
 import { runDispatcher, type DispatchOutcome } from './ai/dispatch';
 import { NetworkMap } from './components/NetworkMap';
 import { Timeline } from './components/Timeline';
@@ -27,6 +28,8 @@ export default function App({ onHome }: { onHome?: () => void }) {
   const stale = deferred !== closures;
 
   const [applied, setApplied] = useState<string | null>(null);
+  // Live recovery moves (an applied plan or the user's own moves). Empty = no recovery.
+  const [actions, setActions] = useState<Action[]>([]);
   const [showAfter, setShowAfter] = useState(true);
   const [status, setStatus] = useState<'idle' | 'loading' | 'done'>('idle');
   const [outcome, setOutcome] = useState<DispatchOutcome | null>(null);
@@ -43,13 +46,15 @@ export default function App({ onHome }: { onHome?: () => void }) {
   useEffect(() => {
     reqId.current++;
     setApplied(null);
+    setActions([]);
     setStatus('idle');
     setOutcome(null);
   }, [closures]);
 
-  const plan = !stale && applied ? planSet.plans.find((p) => p.id === applied) : undefined;
-  const after = !!plan && showAfter;
-  const sim = after ? plan!.result : disrupted;
+  const recovered = useMemo(() => (actions.length ? simulate(network, { closures, actions }) : null), [closures, actions]);
+  const afterLabel = applied ?? 'your moves';
+  const after = !!recovered && showAfter;
+  const sim = after ? recovered! : disrupted;
   const chain = useMemo(() => new Set(selected ? dominoChain(sim, selected).map((r) => r.id) : []), [sim, selected]);
 
   useEffect(() => {
@@ -83,8 +88,21 @@ export default function App({ onHome }: { onHome?: () => void }) {
   }, [planSet, facts]);
 
   const applyPlan = (id: string | null) => {
-    setApplied(id);
+    const p = id ? planSet.plans.find((x) => x.id === id) : undefined;
+    setApplied(p ? p.id : null);
+    setActions(p ? p.actions : []);
     setShowAfter(true);
+  };
+
+  // Manual recovery moves: each one re-runs the engine; removing them restores the exact prior state.
+  const addMove = (a: Action) => {
+    setActions((cur) => (cur.some((x) => actionKey(x) === actionKey(a)) ? cur : [...cur, a]));
+    setApplied(null);
+    setShowAfter(true);
+  };
+  const removeMove = (key: string) => {
+    setActions((cur) => cur.filter((x) => actionKey(x) !== key));
+    setApplied(null);
   };
 
   const loadPreset = (cs: Closure[]) => {
@@ -128,7 +146,17 @@ export default function App({ onHome }: { onHome?: () => void }) {
       <main className="layout">
         <div className="col">
           <Controls closures={closures} onChange={setClosures} onPreset={loadPreset} />
-          <Impact closures={closures} current={sim.metrics} before={after ? disrupted.metrics : undefined} planId={plan?.id} onOpen={openDetails} />
+          <Impact
+            closures={closures}
+            current={sim.metrics}
+            before={after ? disrupted.metrics : undefined}
+            planId={afterLabel}
+            moves={actions}
+            movesSim={recovered}
+            onRemoveMove={removeMove}
+            onResetMoves={() => applyPlan(null)}
+            onOpen={openDetails}
+          />
         </div>
 
         <section className="card stage" aria-label="Network view">
@@ -146,10 +174,10 @@ export default function App({ onHome }: { onHome?: () => void }) {
               </div>
             )}
             <span className="spacer" />
-            {plan ? (
-              <div className="seg" role="group" aria-label="Before or after the plan">
+            {recovered ? (
+              <div className="seg" role="group" aria-label="Before or after recovery">
                 <button aria-pressed={!showAfter} onClick={() => setShowAfter(false)}>Before</button>
-                <button aria-pressed={showAfter} onClick={() => setShowAfter(true)}>After {plan.id}</button>
+                <button aria-pressed={showAfter} onClick={() => setShowAfter(true)}>After {applied ?? 'moves'}</button>
               </div>
             ) : (
               view !== 'details' && (
@@ -167,7 +195,7 @@ export default function App({ onHome }: { onHome?: () => void }) {
             {view === 'map' && <NetworkMap sim={sim} closures={closures} time={t} selected={selected} chain={chain} onAirport={onAirport} onFlight={setSelected} />}
             {view === 'timeline' && <Timeline sim={sim} closures={closures} time={t} selected={selected} chain={chain} onFlight={setSelected} />}
             {view === 'details' && <Details sim={sim} tab={detailTab} selected={selected} onFlight={setSelected} />}
-            {selected && <WhyDrawer sim={sim} closures={closures} flightId={selected} onClose={() => setSelected(null)} />}
+            {selected && <WhyDrawer sim={sim} closures={closures} flightId={selected} actions={actions} onMove={addMove} onClose={() => setSelected(null)} />}
           </div>
 
           {view !== 'details' && (
@@ -195,6 +223,7 @@ export default function App({ onHome }: { onHome?: () => void }) {
           <li>A connection breaks when passengers get less than the minimum connect time.</li>
           <li>A crew may not land after its duty limit. That flight and the rest of the crew's day are cancelled.</li>
           <li>Stranded passengers = passengers on cancelled flights + connecting passengers who miss their connection.</li>
+          <li>Click any flight to cancel it, swap in a spare aircraft or hold it for connecting passengers. Every move re-runs the engine; remove it to restore the exact prior state.</li>
           <li>The engine tests every recovery move (cancel a flight, use a spare aircraft, hold a flight for connecting passengers) and scores each plan.</li>
           <li>The Gemini AI picks a plan and explains it. It never calculates. Every number it writes is checked against the engine before you see it.</li>
         </ol>

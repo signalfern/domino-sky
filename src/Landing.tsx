@@ -131,7 +131,6 @@ export default function Landing({ onLaunch, prefetch }: Props) {
         el.style.visibility = o < 0.01 ? 'hidden' : 'visible';
       });
       if (progRef.current) progRef.current.style.transform = `scaleX(${p.toFixed(4)})`;
-      void y0;
     };
 
     // Ease the shown progress toward the scroll position every frame: smooth even with stepped mouse wheels.

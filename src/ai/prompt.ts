@@ -26,7 +26,9 @@ Hard rules:
 2. Never add, subtract, average or estimate. If a number is not in FACTS, describe it in words without a number.
 3. Pick exactly one plan id from PLANS. Prefer the lowest cost plan unless a clear operational reason favours another
    (fewer cancellations, keeping a spare aircraft in reserve); say why.
-4. Plain, short, operational English (ASD-STE100 style): short sentences, active voice, one idea per sentence.
+4. Be specific to THIS scenario: name the exact flight ids, aircraft tail ids and passenger counts from WHAT HAPPENED
+   (for example "DS0402 on VT-DS04 leaves {{DS0402.disrupted.dep}}"). Never give generic aviation advice.
+5. Plain, short, operational English (ASD-STE100 style): short sentences, active voice, one idea per sentence.
 
 Output JSON only, matching the schema: planId, headline (max 90 chars), explanation (3-5 bullets, each max 200 chars),
 risks (1-3 bullets), whyNotOthers (1-2 sentences).`;

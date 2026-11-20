@@ -1,4 +1,6 @@
+import { useState } from 'react';
 import { network } from '../data/network';
+import { runCrisisParser } from '../ai/crisis';
 import { fmt, toMin } from '../engine/time';
 import type { Closure } from '../engine/types';
 import { PRESETS } from '../ui';
@@ -20,6 +22,43 @@ interface Props {
   onPreset: (closures: Closure[]) => void;
 }
 
+/** Plain-English crisis box: Gemini (or the offline parser) turns text into real closures. */
+function CrisisBox({ onPreset }: { onPreset: (c: Closure[]) => void }) {
+  const [text, setText] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
+  const submit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!text.trim() || busy) return;
+    setBusy(true);
+    const out = await runCrisisParser(text);
+    setBusy(false);
+    if (!out.closures.length) {
+      setMsg({ ok: false, text: 'No airport found. Try: "Storm in Mumbai at 7:30 for 90 min".' });
+      return;
+    }
+    onPreset(out.closures);
+    const what = out.closures.map((c) => `${c.airport} ${fmt(c.start)}–${fmt(c.end)}`).join(' + ');
+    setMsg({ ok: true, text: `${out.source === 'gemini' ? '✦ Gemini' : 'Built-in parser'}: ${what}${out.note ? ` (${out.note})` : ''}` });
+  };
+  return (
+    <form className="crisis" onSubmit={submit}>
+      <label htmlFor="crisis-text" className="crisis-label">Or describe a crisis</label>
+      <div className="crisis-row">
+        <input
+          id="crisis-text"
+          value={text}
+          onChange={(e) => setText(e.target.value)}
+          placeholder="e.g. fog in Delhi 6 to 8, storm over Mumbai at 7:30 for 90 min"
+          maxLength={600}
+        />
+        <button className="btn small primary" type="submit" disabled={busy || !text.trim()}>{busy ? '…' : 'Simulate'}</button>
+      </div>
+      {msg && <p className={`crisis-msg${msg.ok ? '' : ' bad'}`} role="status">{msg.text}</p>}
+    </form>
+  );
+}
+
 export function Controls({ closures, onChange, onPreset }: Props) {
   const update = (id: string, patch: Partial<Closure>) => onChange(closures.map((c) => (c.id === id ? { ...c, ...patch } : c)));
   const add = () => {
@@ -36,12 +75,14 @@ export function Controls({ closures, onChange, onPreset }: Props) {
 
       <div className="presets" role="group" aria-label="Quick scenarios">
         {PRESETS.map((p) => (
-          <button key={p.id} className="preset" aria-pressed={same(p.closures, closures)} onClick={() => onPreset(p.closures)}>
+          <button key={p.id} className={`preset${p.closures.length > 1 ? ' wide' : ''}`} aria-pressed={same(p.closures, closures)} onClick={() => onPreset(p.closures)}>
             {p.label}
             <small>{p.detail}</small>
           </button>
         ))}
       </div>
+
+      <CrisisBox onPreset={onPreset} />
 
       {closures.map((c, i) => {
         const minutes = c.end - c.start;
@@ -75,7 +116,7 @@ export function Controls({ closures, onChange, onPreset }: Props) {
                 <span>Closed for <b>{minutes} min</b></span>
                 <span>reopens <b>{fmt(c.end)}</b></span>
               </div>
-              <input type="range" min={15} max={360} step={15} value={minutes} onChange={(e) => update(c.id, { end: c.start + Number(e.target.value) })} />
+              <input type="range" min={5} max={360} step={5} value={minutes} onChange={(e) => update(c.id, { end: c.start + Number(e.target.value) })} />
             </label>
           </div>
         );

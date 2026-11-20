@@ -1,8 +1,10 @@
 import { causePhrase } from '../ai/dispatch';
 import { dominoChain } from '../engine/simulate';
+import { actionKey } from '../engine/planner';
+import { network } from '../data/network';
 import { dur, fmt } from '../engine/time';
-import type { Closure, Metrics, SimResult } from '../engine/types';
-import { cityOf, fmtNum, tone } from '../ui';
+import type { Action, Closure, Metrics, SimResult } from '../engine/types';
+import { cityOf, fmtNum, shortAction, tone } from '../ui';
 
 export type DetailTab = 'flights' | 'connections' | 'crews';
 
@@ -20,10 +22,14 @@ interface ImpactProps {
   current: Metrics;
   before?: Metrics;
   planId?: string;
+  moves: Action[];
+  movesSim: SimResult | null;
+  onRemoveMove: (key: string) => void;
+  onResetMoves: () => void;
   onOpen: (tab: DetailTab) => void;
 }
 
-export function Impact({ closures, current, before, planId, onOpen }: ImpactProps) {
+export function Impact({ closures, current, before, planId, moves, movesSim, onRemoveMove, onResetMoves, onOpen }: ImpactProps) {
   const where = closures.map((c) => cityOf[c.airport]).join(' + ');
   return (
     <section className="card" aria-labelledby="s2">
@@ -68,6 +74,25 @@ export function Impact({ closures, current, before, planId, onOpen }: ImpactProp
           <span className="mono">{fmtNum(current.totalDelayMin)}</span> delay min · longest <span className="mono">{current.maxDelay}</span> min ·{' '}
           <span className="mono">{fmtNum(current.delayedPax)}</span> passengers late
         </p>
+      )}
+      {moves.length > 0 && (
+        <div className="moves" aria-label="Recovery moves">
+          <div className="moves-head">
+            <span>Recovery moves ({moves.length})</span>
+            <button className="btn link" onClick={onResetMoves}>Reset all</button>
+          </div>
+          {moves.map((a) => {
+            const s = shortAction(a, movesSim ?? undefined);
+            const key = actionKey(a);
+            return (
+              <div className="action" key={key}>
+                <span className="ic">{s.icon}</span>
+                <span style={{ flex: 1 }}>{s.text}</span>
+                <button className="icon-x" onClick={() => onRemoveMove(key)} aria-label={`Undo: ${s.text}`}>✕</button>
+              </div>
+            );
+          })}
+        </div>
       )}
     </section>
   );
@@ -159,7 +184,41 @@ export function Details({ sim, tab, selected, onFlight }: DetailsProps) {
 
 /* ---------------- Why drawer (domino chain) ---------------- */
 
-export function WhyDrawer({ sim, closures, flightId, onClose }: { sim: SimResult; closures: Closure[]; flightId: string; onClose: () => void }) {
+/** One-click recovery moves for a selected flight. Only legal moves are offered. */
+function MoveButtons({ sim, flightId, actions, onMove }: { sim: SimResult; flightId: string; actions: Action[]; onMove: (a: Action) => void }) {
+  const r = sim.flights[flightId];
+  const used = new Set(actions.filter((a) => a.kind === 'swap').map((a) => (a as { spareId: string }).spareId));
+  const userCancelled = r.cancelReason === 'user';
+  const moves: { a: Action; label: string }[] = [];
+  if (!r.cancelled) moves.push({ a: { kind: 'cancel', flightId }, label: `Cancel ${flightId}` });
+  if (!userCancelled && r.tail === r.plannedTail) {
+    for (const s of network.spare_aircraft) {
+      if (s.base === r.origin && !used.has(s.tail_id)) moves.push({ a: { kind: 'swap', spareId: s.tail_id, flightId }, label: `Spare ${s.tail_id} flies from here` });
+    }
+  }
+  for (const c of sim.connections) {
+    if (c.status === 'missed' && (c.to === flightId || c.from === flightId)) moves.push({ a: { kind: 'hold', connectionId: c.id }, label: `Hold ${c.to} for ${c.pax} pax (${c.id})` });
+  }
+  if (!moves.length) return null;
+  return (
+    <div className="move-btns" aria-label="Recovery moves for this flight">
+      {moves.map((m) => (
+        <button key={actionKey(m.a)} className="btn small" onClick={() => onMove(m.a)}>{m.label}</button>
+      ))}
+    </div>
+  );
+}
+
+interface WhyProps {
+  sim: SimResult;
+  closures: Closure[];
+  flightId: string;
+  actions: Action[];
+  onMove: (a: Action) => void;
+  onClose: () => void;
+}
+
+export function WhyDrawer({ sim, closures, flightId, actions, onMove, onClose }: WhyProps) {
   const target = sim.flights[flightId];
   if (!target) return null;
   const chain = dominoChain(sim, flightId);
@@ -211,6 +270,7 @@ export function WhyDrawer({ sim, closures, flightId, onClose }: { sim: SimResult
           </div>
         </div>
       ))}
+      <MoveButtons sim={sim} flightId={flightId} actions={actions} onMove={onMove} />
     </aside>
   );
 }

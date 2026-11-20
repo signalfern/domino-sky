@@ -18,8 +18,7 @@ function devApi(env: Record<string, string>): Plugin {
         for await (const chunk of req) raw += chunk;
         try {
           const mod = await server.ssrLoadModule('/src/server/gemini.ts');
-          const input = mod.validateBody(raw);
-          send(200, await mod.callGemini(input, env.GEMINI_API_KEY, env.GEMINI_MODEL));
+          send(200, await mod.handle(raw, env.GEMINI_API_KEY, env.GEMINI_MODEL));
         } catch (e) {
           send(502, { error: e instanceof Error ? e.message : 'Gemini call failed' });
         }

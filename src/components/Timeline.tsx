@@ -30,7 +30,7 @@ function TimelineImpl({ sim, closures, time, selected, chain, onFlight }: Props)
     tail,
     spare: SPARES.includes(tail),
     ghosts: flights.filter((r) => r.plannedTail === tail),
-    bars: flights.filter((r) => r.tail === tail || (r.cancelled && r.plannedTail === tail && r.tail === tail)),
+    bars: flights.filter((r) => r.tail === tail),
   }));
 
   const label = (r: FlightResult) =>

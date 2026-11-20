@@ -179,6 +179,9 @@ function NetworkMapImpl({ sim, closures, time, selected, chain, onAirport, onFli
     return [...m.entries()];
   }, [flights]);
 
+  // Routes used by the selected domino chain (one pass instead of a scan per route).
+  const chainRoutes = useMemo(() => new Set([...chain].map((id) => sim.flights[id]).filter(Boolean).map((r) => `${r.origin}-${r.destination}`)), [chain, sim]);
+
   const airborne = flights.filter((r) => !r.cancelled && r.dep <= time && time < r.arr);
   const closedNow = new Set(closures.filter((c) => c.start <= time && time < c.end).map((c) => c.airport));
   const closedAny = new Set(closures.map((c) => c.airport));
@@ -217,7 +220,7 @@ function NetworkMapImpl({ sim, closures, time, selected, chain, onAirport, onFli
 
         {routes.map(([key, r]) => {
           const c = CURVES.get(key)!;
-          const inChain = [...chain].some((id) => sim.flights[id] && `${sim.flights[id].origin}-${sim.flights[id].destination}` === key);
+          const inChain = chainRoutes.has(key);
           const sev = severity(r);
           return (
             <path

@@ -1,4 +1,4 @@
-export const DAY = 1440;
+const DAY = 1440;
 
 /** "HH:MM" → minutes from midnight. */
 export function toMin(hhmm: string): number {

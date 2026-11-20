@@ -1,9 +1,7 @@
 node_modules
 dist
-.env
-.env.local
-.vercel
-*.log
-
-.vercel
 .env*
+!.env.example
+.vercel
+.claude
+*.log

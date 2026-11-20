@@ -13,12 +13,24 @@ Built for **Prompt Wars** (Google for Developers × Hack2skill).
 
 | | |
 |---|---|
-| **Close any airport** | Pick airport, start time, duration (15–360 min). Add up to 3 closures. One-click presets (Mumbai thunderstorm, Delhi runway closure, …) or click an airport on the map. |
-| **Watch the domino effect** | Live network map with aircraft flying their routes on a time scrubber (play at 1×/3×/8×). Aircraft timeline (Gantt) shows schedule vs simulated for all 16 aircraft + 2 spares. |
+| **Close any airport** | Pick airport, start time, duration (5–360 min, 5-min steps). Chain up to 3 closures. One-click presets (Mumbai storm, Delhi runway, Bengaluru rain, Hyderabad fog, **chained Mumbai + Delhi**) or click an airport on the map. |
+| **Describe a crisis in plain English** | *"fog in Delhi 6 to 8, storm over Mumbai at 7:30 for 90 min"* → Gemini compiles it into real closures (structured JSON, airport enum, validated against the network). Offline, a deterministic parser does the same. |
+| **Watch the domino effect** | Zoomable, pannable map of India (official boundary; wheel / pinch / drag / +−) with aircraft flying their routes on a time scrubber (play at 1×/3×/8×). Live network map with aircraft flying their routes on a time scrubber (play at 1×/3×/8×). Aircraft timeline (Gantt) shows schedule vs simulated for all 16 aircraft + 2 spares. |
 | **See why each flight is late** | Every flight carries its binding cause: origin closed, destination closed (held at origin), late inbound aircraft, held for a connection, crew out of hours, aircraft out of position. Click a flight to see its full domino chain back to the closure. |
 | **Count the damage** | Late flights, delay minutes, passengers delayed, stranded passengers (cancelled + missed connections), broken connections, crews over their legal duty limit. |
 | **AI dispatcher** | The engine generates and scores recovery plans (cancel a leg, swap in a spare aircraft, hold a flight for connecting passengers, and greedy combinations of up to 3). Gemini picks one and explains the trade-offs in plain operational English. |
-| **Before / after** | Apply any plan and flip between before and after on the KPIs, map and timeline. |
+| **Before / after** | Apply any plan with one click and flip between before and after on the KPIs, map and timeline. |
+| **Your own recovery moves** | Click any flight: *Cancel it*, *Spare VT-DS17/18 flies from here* (only legal swaps are offered), or *Hold for N connecting pax*. Every move re-runs the engine; remove a move or *Reset all* to restore the exact prior state. |
+| **Grounded AI** | The dispatcher cites the exact flight ids, tail ids, departure times, passenger counts and domino step of the scenario on screen, and every number is verified against the engine. |
+
+## Judges' live stress tests — automated in [`tests/stress.test.ts`](tests/stress.test.ts)
+
+| Test | What the engine does |
+|---|---|
+| **Buffer absorption** | BOM closed 20 min at 08:15: DS0501 leaves 20 min late, the 70-min turnaround absorbs it, DS0502–DS0504 stay on time. Closed 110 min: the delay propagates 3 more hops down VT-DS05 (domino step 4). |
+| **Hub vs spoke** | A GAU or TRV closure only hurts aircraft whose `tail_id` chain touches that airport. |
+| **Live recovery delta** | Swapping VT-DS18 onto DS0304 in the Delhi scenario cuts stranded passengers and cancellations; removing the move restores the identical prior state. Chained BOM + DEL closures keep every total consistent. |
+| **Grounded AI** | For an unscripted HYD 75-min storm, the answer names only flights the HYD closure actually hurts, cites tail ids, and passes number verification. |
 
 ## The rule: AI explains, code calculates
 
@@ -51,6 +63,7 @@ src/engine/     simulate.ts  (closures, chains, crew, connections, causes, domin
                 planner.ts   (candidate actions, greedy plans, deltas)
                 facts.ts     (facts table, placeholder filling, number verifier)
 src/ai/         prompt.ts    (system instruction + JSON schema, shared with server)
+                crisis.ts    (plain-English crisis → closures: Gemini schema + offline parser)
                 dispatch.ts  (context builder, Gemini call → verify → retry → rule fallback)
 src/server/     gemini.ts    (Gemini REST generateContent with structured JSON output)
 api/dispatch.ts Vercel serverless function (API key stays server-side)

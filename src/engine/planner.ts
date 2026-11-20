@@ -1,5 +1,4 @@
 import { simulate, indexNetwork } from './simulate';
-import { fmt } from './time';
 import type { Action, Closure, Network, SimResult, Metrics } from './types';
 
 export interface PlanDelta {
@@ -137,9 +136,4 @@ export function buildPlans(net: Network, closures: Closure[]): PlanSet {
   plans.sort((a, b) => a.result.metrics.cost - b.result.metrics.cost);
   plans.forEach((p, i) => (p.id = `P${i + 1}`));
   return { closures, baseline, disrupted, plans };
-}
-
-/** Short human summary of a closure list. */
-export function closureText(closures: Closure[], cities?: Record<string, string>): string {
-  return closures.map((c) => `${cities?.[c.airport] ? `${cities[c.airport]} (${c.airport})` : c.airport} closed ${fmt(c.start)}–${fmt(c.end)}`).join('; ');
 }

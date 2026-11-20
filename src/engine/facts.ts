@@ -50,6 +50,7 @@ export function buildFacts(ps: PlanSet, net: Network): Facts {
     f[`${id}.schedDep`] = fmt(d.schedDep);
     f[`${id}.disrupted.dep`] = fmt(d.dep);
     f[`${id}.disrupted.delay`] = d.delay;
+    if (d.depth > 0) f[`${id}.depth`] = d.depth;
     for (const p of ps.plans) {
       const r = p.result.flights[id];
       f[`${id}.${p.id}.dep`] = fmt(r.dep);

@@ -40,8 +40,8 @@ export function buildContext(net: Network, ps: PlanSet, facts: Facts): DispatchC
   const top = [...hit].sort((a, b) => Number(b.cancelled) - Number(a.cancelled) || b.delay * b.pax - a.delay * a.pax).slice(0, 12);
   const summary = top.map((r) =>
     r.cancelled
-      ? `${r.id} ${r.origin}-${r.destination} CANCELLED ({{${r.id}.pax}} pax): ${causePhrase(r)}`
-      : `${r.id} ${r.origin}-${r.destination} late {{${r.id}.disrupted.delay}} min, leaves {{${r.id}.disrupted.dep}} instead of {{${r.id}.schedDep}}: ${causePhrase(r)}`,
+      ? `${r.id} on ${r.tail} ${r.origin}-${r.destination} CANCELLED ({{${r.id}.pax}} pax): ${causePhrase(r)}`
+      : `${r.id} on ${r.tail} ${r.origin}-${r.destination} late {{${r.id}.disrupted.delay}} min, leaves {{${r.id}.disrupted.dep}} instead of {{${r.id}.schedDep}}, {{${r.id}.pax}} pax${r.depth > 0 ? `, domino step {{${r.id}.depth}}` : ''}: ${causePhrase(r)}`,
   );
   for (const c of d.connections.filter((x) => x.status !== 'ok')) {
     summary.push(`Connection ${c.id} at ${c.airport} (${c.from} to ${c.to}, {{${c.id}.pax}} pax) is ${c.status === 'missed' ? 'MISSED' : 'lost to a cancellation'}`);
@@ -58,6 +58,25 @@ export function buildContext(net: Network, ps: PlanSet, facts: Facts): DispatchC
   };
 }
 
+/** The flights, tails and passengers this scenario hurts most, as verifiable sentences. */
+function groundedLines(ps: PlanSet): string[] {
+  const d = ps.disrupted;
+  const out: string[] = [];
+  const late = Object.values(d.flights).filter((r) => !r.cancelled && r.delay > 0).sort((a, b) => b.delay * b.pax - a.delay * a.pax);
+  const deepest = [...late].sort((a, b) => b.depth - a.depth)[0];
+  for (const r of late.slice(0, 2)) {
+    out.push(`${r.id} on ${r.tail} (${r.origin} to ${r.destination}) leaves {{${r.id}.disrupted.dep}} instead of {{${r.id}.schedDep}} with {{${r.id}.pax}} passengers: ${causePhrase(r)}.`);
+  }
+  if (deepest && deepest.depth > 1 && !late.slice(0, 2).includes(deepest)) {
+    out.push(`The delay reaches ${deepest.id} on ${deepest.tail} at ${deepest.origin}, domino step {{${deepest.id}.depth}} from the closure.`);
+  }
+  const cxl = Object.values(d.flights).find((r) => r.cancelled);
+  if (cxl) out.push(`${cxl.id} on ${cxl.tail} cannot fly (${causePhrase(cxl).toLowerCase()}): {{${cxl.id}.pax}} passengers stranded.`);
+  const conn = [...d.connections].filter((c) => c.status === 'missed').sort((a, b) => b.pax - a.pax)[0];
+  if (conn) out.push(`Connection ${conn.id} at ${conn.airport} breaks: {{${conn.id}.pax}} passengers from ${conn.from} miss ${conn.to}.`);
+  return out;
+}
+
 /** Deterministic dispatcher: always available, always verifiable. */
 export function rulesReply(ps: PlanSet): DispatchReply {
   const p = ps.plans[0];
@@ -68,6 +87,7 @@ export function rulesReply(ps: PlanSet): DispatchReply {
       explanation: [
         `Closure: {{closure1.airport}} from {{closure1.start}} to {{closure1.end}}.`,
         `Late flights: {{disrupted.lateFlights}}. Stranded passengers: {{disrupted.strandedPax}}.`,
+        ...groundedLines(ps),
       ],
       risks: ['Watch for new closures. Slack is small on several aircraft.'],
       whyNotOthers: 'No candidate plan lowers the cost.',
@@ -77,8 +97,10 @@ export function rulesReply(ps: PlanSet): DispatchReply {
   const m = p.result.metrics;
   const explanation = [
     `The closure makes {{disrupted.lateFlights}} flights late and strands {{disrupted.strandedPax}} passengers.`,
-    `Stranded passengers go from {{disrupted.strandedPax}} to {{${id}.strandedPax}}. Total delay goes from {{disrupted.totalDelayMin}} to {{${id}.totalDelayMin}} min.`,
+    ...groundedLines(ps),
   ];
+  if (m.strandedPax !== ps.disrupted.metrics.strandedPax) explanation.push(`With ${id}, stranded passengers go from {{disrupted.strandedPax}} to {{${id}.strandedPax}}.`);
+  if (m.totalDelayMin !== ps.disrupted.metrics.totalDelayMin) explanation.push(`With ${id}, total delay goes from {{disrupted.totalDelayMin}} to {{${id}.totalDelayMin}} min.`);
   if (ps.disrupted.metrics.crewTimeouts > 0) explanation.push(`Crews over the duty limit go from {{disrupted.crewTimeouts}} to {{${id}.crewTimeouts}}.`);
   if (ps.disrupted.metrics.brokenConnections > 0) explanation.push(`Broken connections go from {{disrupted.brokenConnections}} to {{${id}.brokenConnections}}.`);
   const risks: string[] = [];
@@ -87,7 +109,12 @@ export function rulesReply(ps: PlanSet): DispatchReply {
   if (!risks.length) risks.push('Some aircraft still run with little turnaround slack.');
   return {
     planId: id,
-    headline: `Do ${id}: cut stranded passengers by {{${id}.saved.strandedPax}}`,
+    headline:
+      p.delta.strandedPax > 0
+        ? `Do ${id}: cut stranded passengers by {{${id}.saved.strandedPax}}`
+        : p.delta.totalDelayMin > 0
+          ? `Do ${id}: cut total delay by {{${id}.saved.totalDelayMin}} min`
+          : `Do ${id}: lower the disruption cost`,
     explanation,
     risks,
     whyNotOthers: ps.plans.length > 1 ? `${id} has the lowest cost ({{${id}.cost}}) of {{plans.count}} plans checked by the engine.` : 'It is the only plan that lowers the cost.',

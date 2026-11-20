@@ -2,7 +2,6 @@ import type { Action, Closure, FlightResult, SimResult } from './engine/types';
 import { network } from './data/network';
 import { toMin } from './engine/time';
 
-export const airportById = Object.fromEntries(network.airports.map((a) => [a.id, a]));
 export const cityOf = Object.fromEntries(network.airports.map((a) => [a.id, a.city]));
 const flightById = Object.fromEntries(network.flights.map((f) => [f.flight_id, f]));
 const connById = Object.fromEntries(network.connections.map((c) => [c.connection_id, c]));
@@ -36,6 +35,7 @@ export const PRESETS: Preset[] = [
   { id: 'del', label: 'Delhi runway', detail: 'DEL 12:00 · 60m', closures: [c('DEL', '12:00', 60)] },
   { id: 'blr', label: 'Bengaluru rain', detail: 'BLR 11:00 · 120m', closures: [c('BLR', '11:00', 120)] },
   { id: 'hyd', label: 'Hyderabad fog', detail: 'HYD 06:00 · 120m', closures: [c('HYD', '06:00', 120)] },
+  { id: 'chain', label: 'Chained storms: Mumbai + Delhi', detail: 'BOM 07:30 · 90m + DEL 12:00 · 60m', closures: [c('BOM', '07:30', 90), { ...c('DEL', '12:00', 60), id: 'C2' }] },
 ];
 
 export const fmtNum = (n: number) => n.toLocaleString('en-IN');
