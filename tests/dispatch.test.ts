@@ -67,3 +67,18 @@ describe('dispatcher', () => {
     expect(out.note).toContain('503');
   });
 });
+
+describe('dispatcher when no move helps', () => {
+  it('still explains the cascade with real flights (Kolkata 16:00–18:00)', async () => {
+    const p = buildPlans(network, [{ id: 'C1', airport: 'CCU', start: toMin('16:00'), end: toMin('18:00') }]);
+    expect(p.plans).toHaveLength(0);
+    expect(p.disrupted.metrics.cost).toBeGreaterThan(0);
+    const f = buildFacts(p, network);
+    const out = await runDispatcher(network, p, f, async () => { throw new Error('offline'); });
+    expect(out.planId).toBeNull();
+    expect(out.verification.ok).toBe(true);
+    const text = [out.reply.headline, ...out.reply.explanation, out.reply.whyNotOthers].join(' ');
+    expect(text).toMatch(/DS10\d\d on VT-DS10/);
+    expect(text).toContain('VT-DS17 at BLR');
+  });
+});

@@ -25,7 +25,8 @@ Hard rules:
    Flight ids (DS0401), aircraft (VT-DS18), connection ids (CX03), crew ids (CR03) and plan ids (P1) may be written as plain text.
 2. Never add, subtract, average or estimate. If a number is not in FACTS, describe it in words without a number.
 3. Pick exactly one plan id from PLANS. Prefer the lowest cost plan unless a clear operational reason favours another
-   (fewer cancellations, keeping a spare aircraft in reserve); say why.
+   (fewer cancellations, keeping a spare aircraft in reserve); say why. If PLANS is empty, set planId to "" and explain
+   the cascade and why no move helps (for example: no spare aircraft is based where the delayed flights depart).
 4. Be specific to THIS scenario: name the exact flight ids, aircraft tail ids and passenger counts from WHAT HAPPENED
    (for example "DS0402 on VT-DS04 leaves {{DS0402.disrupted.dep}}"). Never give generic aviation advice.
 5. Plain, short, operational English (ASD-STE100 style): short sentences, active voice, one idea per sentence.
@@ -53,7 +54,7 @@ export function buildUserPrompt(ctx: DispatchContext, feedback?: string): string
     `SCENARIO: ${ctx.scenario}`,
     `NETWORK: ${ctx.network}`,
     `WHAT HAPPENED (engine output):\n${ctx.disruptedSummary.map((s) => `- ${s}`).join('\n')}`,
-    `PLANS (sorted best cost first; cost = passenger delay minutes + 180 per stranded passenger):\n${plans}`,
+    `PLANS (sorted best cost first; cost = passenger delay minutes + 180 per stranded passenger):\n${plans || '(none: no cancellation, spare swap or hold, alone or combined, lowers the cost)'}`,
     `FACTS (cite each value as {{<key>}}):\n${JSON.stringify(ctx.facts)}`,
     feedback ? `YOUR PREVIOUS ANSWER WAS REJECTED: ${feedback}\nFix it. Use only {{<key>}} placeholders for numbers.` : '',
   ]

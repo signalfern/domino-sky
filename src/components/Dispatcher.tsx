@@ -83,9 +83,9 @@ export function Dispatcher({ planSet, stale, status, outcome, applied, onAsk, on
               ? 'Nothing to fix yet. Close an airport first.'
               : plans.length
                 ? `The engine tested every recovery move. ${plans.length} plan${plans.length > 1 ? 's' : ''} beat doing nothing. The AI dispatcher picks one and explains why.`
-                : 'The engine found no move that improves this situation.'}
+                : 'The engine tested every recovery move and none improves this situation. Ask the AI dispatcher to explain the cascade and why.'}
           </p>
-          {!nothing && plans.length > 0 && (
+          {!nothing && (
             <button className="btn ai" onClick={onAsk} disabled={status === 'loading' || stale}>
               {status === 'loading' ? 'Thinking…' : stale ? 'Updating plans…' : '✦ Ask the AI dispatcher'}
             </button>

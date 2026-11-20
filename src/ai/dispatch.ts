@@ -84,7 +84,7 @@ function groundedLines(ps: PlanSet): string[] {
 }
 
 /** Deterministic dispatcher: always available, always verifiable. */
-export function rulesReply(ps: PlanSet): DispatchReply {
+export function rulesReply(ps: PlanSet, net?: Network): DispatchReply {
   const p = ps.plans[0];
   if (!p) {
     return {
@@ -96,7 +96,7 @@ export function rulesReply(ps: PlanSet): DispatchReply {
         ...groundedLines(ps),
       ],
       risks: ['Watch for new closures. Slack is small on several aircraft.'],
-      whyNotOthers: 'No candidate plan lowers the cost.',
+      whyNotOthers: `The engine tested every cancellation, spare swap${net ? ` (${net.spare_aircraft.map((s) => `${s.tail_id} at ${s.base}`).join(', ')})` : ''} and hold. None lowers the total.`,
     };
   }
   const id = p.id;
@@ -180,7 +180,7 @@ export async function runDispatcher(net: Network, ps: PlanSet, facts: Facts, cal
       break;
     }
   }
-  const rules = rulesReply(ps);
+  const rules = rulesReply(ps, net);
   const chk = checkReply(rules, ps, facts);
   return { planId: rules.planId || null, reply: fillReply(rules, facts), source: 'rules', verification: chk.verification, attempts, note };
 }
