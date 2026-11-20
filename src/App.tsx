@@ -18,7 +18,7 @@ const SPEEDS = [{ v: 15, l: '1×' }, { v: 45, l: '3×' }, { v: 120, l: '8×' }];
 const T_MIN = 5 * 60;
 const T_MAX = 25 * 60;
 
-export default function App() {
+export default function App({ onHome }: { onHome?: () => void }) {
   const [closures, setClosures] = useState<Closure[]>(PRESETS[0].closures);
   const deferred = useDeferredValue(closures);
   const disrupted = useMemo(() => simulate(network, { closures, actions: [] }), [closures]);
@@ -112,7 +112,7 @@ export default function App() {
   return (
     <div className="app">
       <header className="topbar">
-        <div className="brand">
+        <a className="brand" href="/" onClick={(e) => { if (onHome) { e.preventDefault(); onHome(); } }} aria-label="Domino Sky home">
           <div className="brand-mark" aria-hidden="true">
             <svg width="18" height="18" viewBox="0 0 24 24"><path d="M3 15l7-2.5L13.5 4l1.8.8-1.6 6.4 6-1.8.8 1.7-6.2 2.6 1.6 5.2-1.7.9-3.4-4.3-6.9.9z" fill="white" /></svg>
           </div>
@@ -120,7 +120,7 @@ export default function App() {
             <h1>Domino Sky</h1>
             <p>Close an airport, watch the delay spread, recover with AI.</p>
           </div>
-        </div>
+        </a>
         <span className="spacer" />
         <button className="btn small" onClick={() => aboutRef.current?.showModal()}>How it works</button>
       </header>
